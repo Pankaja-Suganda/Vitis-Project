@@ -1,0 +1,3 @@
+D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/zynq_fsbl/build/CMakeFiles/fsbl.elf.dir
+D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/zynq_fsbl/build/CMakeFiles/edit_cache.dir
+D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/zynq_fsbl/build/CMakeFiles/rebuild_cache.dir
