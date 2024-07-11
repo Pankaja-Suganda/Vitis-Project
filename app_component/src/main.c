@@ -53,17 +53,30 @@ int main(){
         xil_printf("Net engine register NET_ENGINE_ROW_COMPLETE_INTR failed\n");
     }
 
-    XTime time_Global;
-    XTime_GetTime(&time_Global);
-    xil_printf("Before Time - %d\n", time_Global);
-    Status = NET_ENGINE_process_maxpooling(&net_engine, imageData, out_buffer);
-    XTime_GetTime(&time_Global);
-    xil_printf("After Time - %d\n", time_Global);
+    XTime time_Global_start;
+    XTime time_Global_end;
+    XTime_GetTime(&time_Global_start);
+    xil_printf("Before Time - %d\n", time_Global_start);
+    // Status = NET_ENGINE_process_maxpooling(&net_engine, imageData, out_buffer);
+    Status = NET_ENGINE_process_cnn(&net_engine, imageData, out_buffer, imageData, imageData[0]);
+    XTime_GetTime(&time_Global_end);
+    xil_printf("After Time - %d\n", time_Global_end - time_Global_start);
+
+    // NET_ENGINE_reset(&net_engine);
+
+    // XTime_GetTime(&time_Global_start);
+    // xil_printf("Before Time - %d\n", time_Global_start);
+    // Status = NET_ENGINE_process_maxpooling(&net_engine, imageData, out_buffer);
+    // XTime_GetTime(&time_Global_end);
+    // xil_printf("After Time - %d\n", time_Global_end - time_Global_start);
 
     // NET_ENGINE_CNN_layer_Process(&net_engine, imageData, out_buffer)
 }
 
 
-
+// pnet
+    // cnn(in, in_1)
+    // max(in_1, in_2)
+    // cnn(in_1, in_2)
 
 

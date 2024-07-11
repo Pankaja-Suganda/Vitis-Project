@@ -15,6 +15,14 @@
 #define NET_ENGINE_CONFIG_CNN_VALUE     0xffffffff
 #define NET_ENGINE_CONFIG_MAXPOOL_VALUE 0x00000000
 
+#define NET_ENGINE_INPUT_ROW_LENGTH   100
+#define NET_ENGINE_OUTPUT_ROW_LENGTH  97
+
+#define NET_ENGINE_TOTAL_DMA_SEND_LENGTH     (NET_ENGINE_INPUT_ROW_LENGTH * NET_ENGINE_INPUT_ROW_LENGTH * 4)
+#define NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH  (NET_ENGINE_OUTPUT_ROW_LENGTH * NET_ENGINE_OUTPUT_ROW_LENGTH * 4)
+#define NET_ENGINE_INITIAL_SEND_LENGTH       (NET_ENGINE_INPUT_ROW_LENGTH * 4 * 3)
+#define NET_ENGINE_SEND_LENGTH               (NET_ENGINE_INPUT_ROW_LENGTH * 4)
+
 /************************** Function Definitions ***************************/
 static void row_completed_ISR(void *CallBackRef){
 	static int i=4;
@@ -23,7 +31,7 @@ static void row_completed_ISR(void *CallBackRef){
 
     instance = (Net_Engine_Inst*) CallBackRef;
 
-    xil_printf("imageProcISR\n");
+    // xil_printf("imageProcISR\n");
     xil_printf("\tReg Status -  %04x\n", Xil_In32(instance->config.RegBase + (2*4)));
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 	// status = checkIdle(XPAR_AXI_DMA_0_BASEADDR,0x4);
@@ -160,11 +168,11 @@ NET_STATUS NET_ENGINE_register_intr(Net_Engine_Inst *instance, Net_Engine_Intr i
 NET_STATUS NET_ENGINE_config(Net_Engine_Inst *instance, NET_CONFIG config){
     if(config == NET_CONFIG_CNN){
         instance->config.config = NET_CONFIG_CNN;
-        NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG5_OFFSET, NET_ENGINE_CONFIG_CNN_VALUE);
+        NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG6_OFFSET, NET_ENGINE_CONFIG_CNN_VALUE);
     }
     else if(config == NET_CONFIG_MAXPOOLING){
         instance->config.config = NET_CONFIG_MAXPOOLING;
-        NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG5_OFFSET, NET_ENGINE_CONFIG_MAXPOOL_VALUE);
+        NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG6_OFFSET, NET_ENGINE_CONFIG_MAXPOOL_VALUE);
     }
     else{
         xil_printf("Net engine config error");
@@ -180,13 +188,14 @@ NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_I
 
     instance->cur_data.input  = input;
     instance->cur_data.output = output;
-    instance->cur_data.state  = NET_STATE_IDLE;
+    instance->cur_data.state  = NET_STATE_BUSY;
     instance->cur_data.received_row_count = 0;
     instance->cur_data.send_row_count = 0;
 
     Xil_DCacheFlushRange((UINTPTR)input, 97*100*4);
+    Xil_DCacheFlushRange((UINTPTR)output, 97*97 * 4);
 
-	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, 97*40*4,XAXIDMA_DEVICE_TO_DMA);
+	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, 97*97*4,XAXIDMA_DEVICE_TO_DMA);
 	if(ret != XST_SUCCESS){
 		xil_printf("DMA initialization failed\n");
 		return NET_ENGINE_FAIL;
@@ -203,7 +212,91 @@ NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_I
         i++;
     }
 
-    xil_printf("Completed \r\n");
+    xil_printf("Completed \r\nOut : \n");
+    Xil_DCacheInvalidateRange((UINTPTR)output, 97 * 97 * 4);
+    for(i = 0; i < (97 * 97); i++){
+        if(i % 30 == 0){
+            xil_printf("\n");
+        }
+        xil_printf("%d, ", output[i]);
+    }
 
     return ret;
 }
+
+
+static NET_STATUS NET_ENGINE_set_kernal(Net_Engine_Inst *instance, u32 *kernal){
+
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_1, kernal[0]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_2, kernal[1]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_3, kernal[2]);
+
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_4, kernal[3]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_5, kernal[4]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_6, kernal[5]);
+
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_7, kernal[6]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_8, kernal[7]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9, kernal[8]);
+
+    return NET_ENGINE_OK;
+
+}
+
+static NET_STATUS NET_ENGINE_set_bias(Net_Engine_Inst *instance, u32 bias){
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_BIAS_REG, bias);
+
+    return NET_ENGINE_OK;
+}
+
+static void NET_ENGINE_dump_regs(){
+
+}
+
+NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, Net_Engine_Img *input, Net_Engine_Img *output, u32 *kernal, u32 bias){
+    NET_STATUS ret = NET_ENGINE_OK;
+
+    ret = NET_ENGINE_config(instance, NET_CONFIG_CNN);
+
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_1, 1);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_BIAS_REG, 1);
+
+    // ret = NET_ENGINE_set_kernal(instance, kernal);
+    // ret = NET_ENGINE_set_bias(instance, bias);
+
+    instance->cur_data.input  = input;
+    instance->cur_data.output = output;
+    instance->cur_data.state  = NET_STATE_BUSY;
+    instance->cur_data.received_row_count = 0;
+    instance->cur_data.send_row_count = 0;
+
+    Xil_DCacheFlushRange((UINTPTR)input,  NET_ENGINE_TOTAL_DMA_SEND_LENGTH);
+    Xil_DCacheFlushRange((UINTPTR)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH);
+
+	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH, XAXIDMA_DEVICE_TO_DMA);
+	if(ret != XST_SUCCESS){
+		xil_printf("DMA initialization failed\n");
+		return NET_ENGINE_FAIL;
+	}
+
+	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)input,  NET_ENGINE_INITIAL_SEND_LENGTH, XAXIDMA_DMA_TO_DEVICE);
+	if(ret != XST_SUCCESS){
+		xil_printf("DMA initialization failed\n");
+		return NET_ENGINE_FAIL;
+	}
+
+    while(instance->cur_data.state != NET_STATE_COMPLETED){}
+
+    xil_printf("Completed \r\nOut : \n");
+    Xil_DCacheInvalidateRange((UINTPTR)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH);
+    int i;
+    for(i = 0; i < (97 * 97); i++){
+        if(i % 30 == 0){
+            xil_printf("\n");
+        }
+        xil_printf("%d, ", output[i]);
+    }
+
+    return ret;
+}
+
