@@ -85,12 +85,44 @@ typedef enum{
 
 typedef struct Net_Engine_Inst_{
     Net_Engine_ID id;
-    Net_Engine net_engine_regs;
+    Net_Engine *net_engine_regs;
     Net_Engine_Config config;
 	XAxiDma          dma_inst;
     XScuGic          intc_inst;
     Net_Engine_Data  cur_data;
 } Net_Engine_Inst;
+
+typedef enum{
+    CONFIG_DATA_STATE_NOT_STARTED,
+    CONFIG_DATA_STATE_BUSY,
+    CONFIG_DATA_STATE_COMPLETED,
+} CONFIG_DATA_STATE;
+
+
+typedef struct CNN_Config_Data_{
+    u8 index;
+    struct {
+        u32 Kernal_1;
+        u32 Kernal_2;
+        u32 Kernal_3;
+        u32 Kernal_4;
+        u32 Kernal_5;
+        u32 Kernal_6;
+        u32 Kernal_7;
+        u32 Kernal_8;
+        u32 Kernal_9;
+    } Kernal;
+    u32 Bias;
+    u32 Reserved_1;
+    u32 Reserved_2;
+    CONFIG_DATA_STATE state;
+}CNN_Config_Data;
+
+typedef struct CNN_Data_Node_{
+    struct CNN_Data_Node_ *next;
+    CNN_Config_Data        config_data;
+} CNN_Data_Node;
+
 /**************************** Type Definitions *****************************/
 
 #endif // NET_ENGINE_TYPE_H

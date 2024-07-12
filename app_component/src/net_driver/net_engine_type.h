@@ -63,10 +63,10 @@ typedef enum{
 typedef void (*Net_Engine_ISR_t)(void *CallBackRef);
 
 typedef struct Net_Engine_Inst_{
-    Net_Engine net_engine_regs;
+    Net_Engine       *net_engine_regs;
     Net_Engine_Config config;
-    Net_Engine_ISR_t row_completed_isr;
-    Net_Engine_ISR_t receive_completed_isr;
+    Net_Engine_ISR_t  row_completed_isr;
+    Net_Engine_ISR_t  receive_completed_isr;
 } Net_Engine_Inst;
 /**************************** Type Definitions *****************************/
 

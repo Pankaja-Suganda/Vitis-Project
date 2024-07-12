@@ -82,7 +82,7 @@ NET_STATUS NET_ENGINE_intr_setup(Net_Engine_Inst *instance, UINTPTR intraddr_p);
 
 NET_STATUS NET_ENGINE_config(Net_Engine_Inst *instance, NET_CONFIG config);
 
-NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, Net_Engine_Img *input, Net_Engine_Img *output, u32 *kernal, u32 bias);
+NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, Net_Engine_Img *input, Net_Engine_Img *output, CNN_Config_Data data);
 
 NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_Img *input, Net_Engine_Img *output);
 
