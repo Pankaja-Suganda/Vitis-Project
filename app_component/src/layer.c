@@ -159,11 +159,15 @@ int LAYER_CNN_process(CNN_Layer *instance){
         return 0;
     }
 
+    int i = 0;
+
     while (node != NULL) {
-        xil_printf("CNN Processing %d \r\n", node->config_data.index);
+        // xil_printf("CNN Processing %d \r\n", node->config_data.index);
 
         ret = NET_ENGINE_process_cnn(&(instance->layer.net_engine), instance->layer.input, instance->layer.output, node->config_data);
+        NET_ENGINE_reset(&(instance->layer.net_engine));
         node = node->next;
+        i++;
     }
 
     xil_printf("CNN Process Completed \r\n");

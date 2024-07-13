@@ -27,6 +27,8 @@ __attribute__((aligned(32))) u32 out_buffer[97*97*4] = {0};
 __attribute__((aligned(32))) u32 in_buffer[100*100*4] = {0};
 
 typedef u64 XTime;
+XTime time_Global_start;
+XTime time_Global_end;
 
 int main(){
     int ret = 0;
@@ -60,11 +62,20 @@ int main(){
     data_2.Kernal.Kernal_9 = 2;
     data_2.index = 1;
 
-    ret = LAYER_CNN_load_data(&cnn_layer, data_1);
-    ret = LAYER_CNN_load_data(&cnn_layer, data_2);
-
+    for(int i = 0 ; i < 1000; i++){    
+        data_1.index  = i;
+        ret = LAYER_CNN_load_data(&cnn_layer, data_1);
+        // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
+        // ret = LAYER_CNN_load_data(&cnn_layer, data_1);
+        // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
+    }
+    
+    XTime_GetTime(&time_Global_start);
+    xil_printf("Before Time - %d\n", time_Global_start);
     ret = LAYER_CNN_process(&cnn_layer);
-
+    XTime_GetTime(&time_Global_end);
+    xil_printf("After Time - %d\n", time_Global_end);
+    
     return 0;
 }
 

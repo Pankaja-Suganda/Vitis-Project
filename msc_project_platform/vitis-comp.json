@@ -60,6 +60,20 @@
         "bifFile": "",
         "bootDirectory": "",
         "sdCardDirectory": ""
+      },
+      {
+        "name": "RTOS",
+        "displayName": "RTOS",
+        "processor": "ps7_cortexa9_0",
+        "cpuType": "cortex-a9",
+        "cpuInstance": "ps7_cortexa9_0",
+        "os": "freertos",
+        "appTemplate": "empty_application",
+        "isBootDomain": false,
+        "qemuData": "D:\\Vivado\\Learning\\Vitis\\Learning_1\\msc_project_platform\\resources\\RTOS\\qemu",
+        "qemuArgsFile": "D:\\Vivado\\Learning\\Vitis\\Learning_1\\msc_project_platform\\resources\\RTOS\\qemu\\qemu_args.txt",
+        "pmcQemuArgsFile": "",
+        "isBSPGenReq": false
       }
     ],
     "emptyToolchainConfiguration": []
