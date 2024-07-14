@@ -38,6 +38,8 @@ u32 checkIdle(u32 baseAddress,u32 offset){
 	return status;
 }
 
+int count = 0;
+
 static void row_completed_ISR(void *CallBackRef){
 	u32 IrqStatus;
 	int status;
@@ -51,11 +53,13 @@ static void row_completed_ISR(void *CallBackRef){
 
     instance = (Net_Engine_Inst*) CallBackRef;
 
+    count++;
+
     // xil_printf("imageProcISR\n");
     // xil_printf("\tReg Status -  %04x\n", instance->net_engine_regs->Status_3);
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 	if(instance->cur_data.state != NET_STATE_COMPLETED){
-		status = XAxiDma_SimpleTransfer(&(instance->dma_inst),(u32)instance->cur_data.input,NET_ENGINE_INPUT_ROW_LENGTH * 4,XAXIDMA_DMA_TO_DEVICE);
+		status = XAxiDma_SimpleTransfer(&(instance->dma_inst),(u32)instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * count),NET_ENGINE_INPUT_ROW_LENGTH * 4,XAXIDMA_DMA_TO_DEVICE);
 	}
 	XScuGic_Enable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 }
@@ -348,7 +352,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
     Xil_DCacheFlushRange((UINTPTR)input, 100*100*4);
     Xil_DCacheFlushRange((UINTPTR)output, 97*97 * 4);
 
-    // NET_ENGINE_dump_regs(instance);
+    NET_ENGINE_dump_regs(instance);
 
 	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH, XAXIDMA_DEVICE_TO_DMA);
 	if(ret != XST_SUCCESS){
@@ -430,6 +434,20 @@ NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *ou
 		xil_printf("Net Engine Config failed\n");
 		return NET_ENGINE_FAIL;
 	}
+
+    count = 0;
+
+
+    instance->net_engine_regs->Kernal_1 = data.Kernal.Kernal_1;
+    instance->net_engine_regs->Kernal_2 = data.Kernal.Kernal_2;
+    instance->net_engine_regs->Kernal_3 = data.Kernal.Kernal_3;
+    instance->net_engine_regs->Kernal_4 = data.Kernal.Kernal_4; 
+    instance->net_engine_regs->Kernal_5 = data.Kernal.Kernal_5;
+    instance->net_engine_regs->Kernal_6 = data.Kernal.Kernal_6; 
+    instance->net_engine_regs->Kernal_7 = data.Kernal.Kernal_7; 
+    instance->net_engine_regs->Kernal_8 = data.Kernal.Kernal_8;
+    instance->net_engine_regs->Kernal_9 = data.Kernal.Kernal_9;
+    instance->net_engine_regs->Bias     = data.Bias;
 
     // ret = NET_ENGINE_set_cnn_values(instance, kernal, bias);
 	// if(ret != XST_SUCCESS){

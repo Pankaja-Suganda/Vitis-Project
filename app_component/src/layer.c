@@ -96,7 +96,7 @@ int LAYER_CNN_init(CNN_Layer *instance, u32* input, u32* output){
 CNN_Data_Node* create_data_node(CNN_Config_Data data){
     CNN_Data_Node* new = (CNN_Data_Node*)malloc(sizeof(CNN_Config_Data));
     if(new == NULL){
-        xil_printf("Node malloc error \r\n");
+        xil_printf("Node malloc error %d \r\n", data.index);
         return NULL;
     }
     new->config_data = data;

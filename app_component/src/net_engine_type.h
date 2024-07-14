@@ -20,16 +20,16 @@ typedef struct Net_Engine_{
     volatile u32 Config_2;
     volatile u32 Config_3;
     volatile u32 Config_4;
-    volatile u32 Bias;
-    volatile u32 Kernal_1;
-    volatile u32 Kernal_2;
-    volatile u32 Kernal_3;
-    volatile u32 Kernal_4;
-    volatile u32 Kernal_5;
-    volatile u32 Kernal_6;
-    volatile u32 Kernal_7;
-    volatile u32 Kernal_8;
-    volatile u32 Kernal_9;
+    volatile float Bias;
+    volatile float Kernal_1;
+    volatile float Kernal_2;
+    volatile float Kernal_3;
+    volatile float Kernal_4;
+    volatile float Kernal_5;
+    volatile float Kernal_6;
+    volatile float Kernal_7;
+    volatile float Kernal_8;
+    volatile float Kernal_9;
 } Net_Engine;
 
 typedef enum {
@@ -102,17 +102,17 @@ typedef enum{
 typedef struct CNN_Config_Data_{
     u8 index;
     struct {
-        u32 Kernal_1;
-        u32 Kernal_2;
-        u32 Kernal_3;
-        u32 Kernal_4;
-        u32 Kernal_5;
-        u32 Kernal_6;
-        u32 Kernal_7;
-        u32 Kernal_8;
-        u32 Kernal_9;
+        float Kernal_1;
+        float Kernal_2;
+        float Kernal_3;
+        float Kernal_4;
+        float Kernal_5;
+        float Kernal_6;
+        float Kernal_7;
+        float Kernal_8;
+        float Kernal_9;
     } Kernal;
-    u32 Bias;
+    float Bias;
     u32 Reserved_1;
     u32 Reserved_2;
     CONFIG_DATA_STATE state;

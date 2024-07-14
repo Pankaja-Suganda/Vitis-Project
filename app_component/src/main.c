@@ -17,6 +17,7 @@
 
 #include "net_engine.h"
 #include "layer.h"
+#include "conv_layer.h"
 
 
 #define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
@@ -34,47 +35,53 @@ int main(){
     int ret = 0;
     CNN_Layer cnn_layer;
 
-    ret = LAYER_CNN_init(&cnn_layer, &in_buffer, &out_buffer);
+    ret = LAYER_CNN_init(&cnn_layer, &imageData, &out_buffer);
 
-    CNN_Config_Data data_1, data_2;
+    // CNN_Config_Data data_1, data_2;
 
-    data_1.Bias = 1;
-    data_1.Kernal.Kernal_1 = 1;
-    data_1.Kernal.Kernal_2 = 1;
-    data_1.Kernal.Kernal_3 = 1;
-    data_1.Kernal.Kernal_4 = 1;
-    data_1.Kernal.Kernal_5 = 1;
-    data_1.Kernal.Kernal_6 = 1;
-    data_1.Kernal.Kernal_7 = 1;
-    data_1.Kernal.Kernal_8 = 1;
-    data_1.Kernal.Kernal_9 = 1;
-    data_1.index = 0;
+    // data_1.Bias = 1;
+    // data_1.Kernal.Kernal_1 = 1;
+    // data_1.Kernal.Kernal_2 = 1;
+    // data_1.Kernal.Kernal_3 = 1;
+    // data_1.Kernal.Kernal_4 = 0;
+    // data_1.Kernal.Kernal_5 = 0;
+    // data_1.Kernal.Kernal_6 = 0;
+    // data_1.Kernal.Kernal_7 = -1;
+    // data_1.Kernal.Kernal_8 = -1;
+    // data_1.Kernal.Kernal_9 = -1;
+    // data_1.index = 0;
 
-    data_2.Bias = 2;
-    data_2.Kernal.Kernal_1 = 2;
-    data_2.Kernal.Kernal_2 = 2;
-    data_2.Kernal.Kernal_3 = 2;
-    data_2.Kernal.Kernal_4 = 2;
-    data_2.Kernal.Kernal_5 = 2;
-    data_2.Kernal.Kernal_6 = 2;
-    data_2.Kernal.Kernal_7 = 2;
-    data_2.Kernal.Kernal_8 = 2;
-    data_2.Kernal.Kernal_9 = 2;
-    data_2.index = 1;
+    // data_2.Bias = 2;
+    // data_2.Kernal.Kernal_1 = 2;
+    // data_2.Kernal.Kernal_2 = 2;
+    // data_2.Kernal.Kernal_3 = 2;
+    // data_2.Kernal.Kernal_4 = 2;
+    // data_2.Kernal.Kernal_5 = 2;
+    // data_2.Kernal.Kernal_6 = 2;
+    // data_2.Kernal.Kernal_7 = 2;
+    // data_2.Kernal.Kernal_8 = 2;
+    // data_2.Kernal.Kernal_9 = 2;
+    // data_2.index = 1;
 
-    for(int i = 0 ; i < 1000; i++){    
-        data_1.index  = i;
-        ret = LAYER_CNN_load_data(&cnn_layer, data_1);
-        // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
-        // ret = LAYER_CNN_load_data(&cnn_layer, data_1);
-        // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
-    }
+    // for(int i = 0 ; i < 9; i++){   
+    ret = LAYER_CNN_load_data(&cnn_layer, cnn_config_data[0]);
+    // }
+
+    // for(int i = 0 ; i < 1000; i++){    
+    //     data_1.index  = i;
+    //     ret = LAYER_CNN_load_data(&cnn_layer, data_1);
+    //     // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
+    //     // ret = LAYER_CNN_load_data(&cnn_layer, data_1);
+    //     // ret = LAYER_CNN_load_data(&cnn_layer, data_2);
+    // }
     
+    // ret = LAYER_CNN_load_data(&cnn_layer, data_1);
+
     XTime_GetTime(&time_Global_start);
     xil_printf("Before Time - %d\n", time_Global_start);
     ret = LAYER_CNN_process(&cnn_layer);
     XTime_GetTime(&time_Global_end);
-    xil_printf("After Time - %d\n", time_Global_end);
+    xil_printf("After Time - %d - %d\n", time_Global_end, ret);
     
     return 0;
 }
