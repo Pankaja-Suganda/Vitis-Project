@@ -20,7 +20,7 @@
 #define NET_ENGINE_DISABLE_VALUE        0x00000000
 
 #define NET_ENGINE_INPUT_ROW_LENGTH     100
-#define NET_ENGINE_OUTPUT_ROW_LENGTH    97
+#define NET_ENGINE_OUTPUT_ROW_LENGTH    98
 
 #define NET_ENGINE_TOTAL_DMA_SEND_LENGTH     (NET_ENGINE_INPUT_ROW_LENGTH  * NET_ENGINE_INPUT_ROW_LENGTH * 4)
 #define NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH  (NET_ENGINE_OUTPUT_ROW_LENGTH * NET_ENGINE_OUTPUT_ROW_LENGTH * 4)
@@ -44,6 +44,9 @@ static void row_completed_ISR(void *CallBackRef){
 	u32 IrqStatus;
 	int status;
     Net_Engine_Inst *instance;
+    u32* temp = instance->cur_data.input;
+
+    // xil_printf("%d location \r\n", temp);
 
     // status = checkIdle(instance->dma_inst.RegBase,0x4);
 	// while(status == 0){
@@ -55,15 +58,15 @@ static void row_completed_ISR(void *CallBackRef){
 
     count++;
 
-    // xil_printf("imageProcISR\n");
+    // xil_printf("imageProcISR %08x, %d\n", instance->cur_data.input, count);
     // xil_printf("\tReg Status -  %04x\n", instance->net_engine_regs->Status_3);
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 	if(instance->cur_data.state != NET_STATE_COMPLETED){
-		status = XAxiDma_SimpleTransfer(&(instance->dma_inst),(u32)instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * count),NET_ENGINE_INPUT_ROW_LENGTH * 4,XAXIDMA_DMA_TO_DEVICE);
+		status = XAxiDma_SimpleTransfer(&(instance->dma_inst), instance->cur_data.input, NET_ENGINE_INPUT_ROW_LENGTH * 4, XAXIDMA_DMA_TO_DEVICE);
+        instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH);
 	}
 	XScuGic_Enable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 }
-
 
 
 void check_dma_status(XAxiDma *dma_inst);
@@ -82,7 +85,7 @@ static void received_ISR(void *CallBackRef){
     // XScuGic_Disable(&(instance->intc_inst), instance->config.receive_isr_id);
 	/* Acknowledge pending interrupts */
 	instance->cur_data.state = NET_STATE_COMPLETED;
-    // xil_printf("dmaReceiveISR\n");
+    xil_printf("dmaReceiveISR\n");
 
 
     // XScuGic_Enable(&(instance->intc_inst), instance->config.receive_isr_id);
@@ -138,27 +141,47 @@ static void NET_ENGINE_dump_regs(Net_Engine_Inst *instance){
 	xil_printf("******************************\n\n\r");
 
 	xil_printf("Register File :\r\n");
- 
-    REG_DUMP(NET_ENGINE_STATUS_REG_1, instance->net_engine_regs->Status_1);
-    REG_DUMP(NET_ENGINE_STATUS_REG_2, instance->net_engine_regs->Status_2);
-    REG_DUMP(NET_ENGINE_STATUS_REG_3, instance->net_engine_regs->Status_3);
-    REG_DUMP(NET_ENGINE_STATUS_REG_4, instance->net_engine_regs->Status_4);
-    REG_DUMP(NET_ENGINE_STATUS_REG_5, instance->net_engine_regs->Status_5);
-    REG_DUMP(NET_ENGINE_STATUS_REG_6, instance->net_engine_regs->Status_6);
-    REG_DUMP(NET_ENGINE_CONFIG_REG_1, instance->net_engine_regs->Config_1);
-    REG_DUMP(NET_ENGINE_CONFIG_REG_2, instance->net_engine_regs->Config_2);
-    REG_DUMP(NET_ENGINE_CONFIG_REG_3, instance->net_engine_regs->Config_3);
-    REG_DUMP(NET_ENGINE_CONFIG_REG_4, instance->net_engine_regs->Config_4);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_1, instance->net_engine_regs->Kernal_1);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_2, instance->net_engine_regs->Kernal_2);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_3, instance->net_engine_regs->Kernal_3);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_4, instance->net_engine_regs->Kernal_4);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_5, instance->net_engine_regs->Kernal_5);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_6, instance->net_engine_regs->Kernal_6);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_7, instance->net_engine_regs->Kernal_7);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_8, instance->net_engine_regs->Kernal_8);
-    REG_DUMP(NET_ENGINE_KERNAL_REG_9, instance->net_engine_regs->Kernal_9);
-    REG_DUMP(NET_ENGINE_BIAS_REG,     instance->net_engine_regs->Bias);
+    REG_DUMP(NET_ENGINE_STATUS_REG_1, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_1));
+    REG_DUMP(NET_ENGINE_STATUS_REG_2, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_2));
+    REG_DUMP(NET_ENGINE_STATUS_REG_3, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_3));
+    REG_DUMP(NET_ENGINE_STATUS_REG_4, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_4));
+    REG_DUMP(NET_ENGINE_STATUS_REG_5, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_5));
+    REG_DUMP(NET_ENGINE_STATUS_REG_6, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_STATUS_REG_6));
+    REG_DUMP(NET_ENGINE_CONFIG_REG_1, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_CONFIG_REG_1));
+    REG_DUMP(NET_ENGINE_CONFIG_REG_2, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_CONFIG_REG_2));
+    REG_DUMP(NET_ENGINE_CONFIG_REG_3, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_CONFIG_REG_3));
+    REG_DUMP(NET_ENGINE_CONFIG_REG_4, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_CONFIG_REG_4));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_1, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_1));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_2, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_2));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_3, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_3));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_4, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_4));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_5, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_5));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_6, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_6));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_7, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_7));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_8, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_8));
+    REG_DUMP(NET_ENGINE_KERNAL_REG_9, NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9));
+    REG_DUMP(NET_ENGINE_BIAS_REG,     NET_ENGINE_mReadReg(instance->config.RegBase, NET_ENGINE_BIAS_REG));
+
+    // REG_DUMP(NET_ENGINE_STATUS_REG_1, instance->net_engine_regs->Status_1);
+    // REG_DUMP(NET_ENGINE_STATUS_REG_2, instance->net_engine_regs->Status_2);
+    // REG_DUMP(NET_ENGINE_STATUS_REG_3, instance->net_engine_regs->Status_3);
+    // REG_DUMP(NET_ENGINE_STATUS_REG_4, instance->net_engine_regs->Status_4);
+    // REG_DUMP(NET_ENGINE_STATUS_REG_5, instance->net_engine_regs->Status_5);
+    // REG_DUMP(NET_ENGINE_STATUS_REG_6, instance->net_engine_regs->Status_6);
+    // REG_DUMP(NET_ENGINE_CONFIG_REG_1, instance->net_engine_regs->Config_1);
+    // REG_DUMP(NET_ENGINE_CONFIG_REG_2, instance->net_engine_regs->Config_2);
+    // REG_DUMP(NET_ENGINE_CONFIG_REG_3, instance->net_engine_regs->Config_3);
+    // REG_DUMP(NET_ENGINE_CONFIG_REG_4, instance->net_engine_regs->Config_4);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_1, instance->net_engine_regs->Kernal_1);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_2, instance->net_engine_regs->Kernal_2);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_3, instance->net_engine_regs->Kernal_3);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_4, instance->net_engine_regs->Kernal_4);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_5, instance->net_engine_regs->Kernal_5);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_6, instance->net_engine_regs->Kernal_6);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_7, instance->net_engine_regs->Kernal_7);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_8, instance->net_engine_regs->Kernal_8);
+    // REG_DUMP(NET_ENGINE_KERNAL_REG_9, instance->net_engine_regs->Kernal_9);
+    // REG_DUMP(NET_ENGINE_BIAS_REG,     instance->net_engine_regs->Bias);
 }
 
 
@@ -200,7 +223,7 @@ NET_STATUS NET_ENGINE_reset(Net_Engine_Inst *instance){
         TimeOut -= 1;
     }
 
-    NET_ENGINE_dump_regs(instance);
+    // NET_ENGINE_dump_regs(instance);
     
     return NET_ENGINE_FAIL;
 }
@@ -347,12 +370,16 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
     instance->cur_data.received_row_count = 0;
     instance->cur_data.send_row_count     = 0;
 
+    count = 3;
+
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_ENABLE_VALUE);
 
     Xil_DCacheFlushRange((UINTPTR)input, 100*100*4);
-    Xil_DCacheFlushRange((UINTPTR)output, 97*97 * 4);
+    Xil_DCacheFlushRange((UINTPTR)output, 97*97*4);
 
-    NET_ENGINE_dump_regs(instance);
+    instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
+
+    // NET_ENGINE_dump_regs(instance);
 
 	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH, XAXIDMA_DEVICE_TO_DMA);
 	if(ret != XST_SUCCESS){
@@ -383,7 +410,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
     Xil_DCacheInvalidateRange((UINTPTR)output, 97 * 97 * 4);
 
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_DISABLE_VALUE);
-    // NET_ENGINE_dump_regs(instance);
+    NET_ENGINE_dump_regs(instance);
 
     return NET_ENGINE_OK;
 }
@@ -407,19 +434,20 @@ NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_I
 }
 
 
-static NET_STATUS NET_ENGINE_set_cnn_values(Net_Engine_Inst *instance, u32 *kernal, u32 bias){
+static NET_STATUS NET_ENGINE_set_cnn_values(Net_Engine_Inst *instance, CNN_Config_Data data){
 
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_1, kernal[0]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_2, kernal[1]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_3, kernal[2]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_1, data.Kernal.Kernal_1);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_2, data.Kernal.Kernal_2);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_3, data.Kernal.Kernal_3);
 
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_4, kernal[3]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_5, kernal[4]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_6, kernal[5]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_4, data.Kernal.Kernal_4);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_5, data.Kernal.Kernal_5);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_6, data.Kernal.Kernal_6);
 
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_7, kernal[6]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_8, kernal[7]);
-    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9, kernal[8]);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_7, data.Kernal.Kernal_7);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_8, data.Kernal.Kernal_8);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9, data.Kernal.Kernal_9);
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_BIAS_REG,     data.Bias);
 
     return NET_ENGINE_OK;
 }
@@ -430,6 +458,7 @@ NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *ou
     NET_STATUS ret = NET_ENGINE_OK;
 
     ret = NET_ENGINE_config(instance, NET_CONFIG_CNN);
+    // ret = NET_ENGINE_config(instance, NET_CONFIG_MAXPOOLING);
 	if(ret != XST_SUCCESS){
 		xil_printf("Net Engine Config failed\n");
 		return NET_ENGINE_FAIL;
@@ -437,23 +466,23 @@ NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *ou
 
     count = 0;
 
+    // instance->net_engine_regs->Kernal_1 = data.Kernal.Kernal_1;
+    // instance->net_engine_regs->Kernal_2 = data.Kernal.Kernal_2;
+    // instance->net_engine_regs->Kernal_3 = data.Kernal.Kernal_3;
+    // instance->net_engine_regs->Kernal_4 = data.Kernal.Kernal_4; 
+    // instance->net_engine_regs->Kernal_5 = data.Kernal.Kernal_5;
+    // instance->net_engine_regs->Kernal_6 = data.Kernal.Kernal_6; 
+    // instance->net_engine_regs->Kernal_7 = data.Kernal.Kernal_7; 
+    // instance->net_engine_regs->Kernal_8 = data.Kernal.Kernal_8;
+    // instance->net_engine_regs->Kernal_9 = data.Kernal.Kernal_9;
+    // instance->net_engine_regs->Bias     = data.Bias;
 
-    instance->net_engine_regs->Kernal_1 = data.Kernal.Kernal_1;
-    instance->net_engine_regs->Kernal_2 = data.Kernal.Kernal_2;
-    instance->net_engine_regs->Kernal_3 = data.Kernal.Kernal_3;
-    instance->net_engine_regs->Kernal_4 = data.Kernal.Kernal_4; 
-    instance->net_engine_regs->Kernal_5 = data.Kernal.Kernal_5;
-    instance->net_engine_regs->Kernal_6 = data.Kernal.Kernal_6; 
-    instance->net_engine_regs->Kernal_7 = data.Kernal.Kernal_7; 
-    instance->net_engine_regs->Kernal_8 = data.Kernal.Kernal_8;
-    instance->net_engine_regs->Kernal_9 = data.Kernal.Kernal_9;
-    instance->net_engine_regs->Bias     = data.Bias;
+    ret = NET_ENGINE_set_cnn_values(instance, data);
+	if(ret != XST_SUCCESS){
+		xil_printf("Net Engine value setting failed\n");
+		return NET_ENGINE_FAIL;
+	}
 
-    // ret = NET_ENGINE_set_cnn_values(instance, kernal, bias);
-	// if(ret != XST_SUCCESS){
-	// 	xil_printf("Net Engine value setting failed\n");
-	// 	return NET_ENGINE_FAIL;
-	// }
     XAxiDma_IntrDisable(&(instance->dma_inst), XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
 	XAxiDma_IntrAckIrq(&(instance->dma_inst), XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
 

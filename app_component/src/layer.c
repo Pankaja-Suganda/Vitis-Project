@@ -84,11 +84,18 @@ int LAYER_CNN_init(CNN_Layer *instance, u32* input, u32* output){
     instance->layer.temp   = output;
     instance->layer.state  = LAYER_STATE_NOT_STARTED;
     instance->data         = NULL;
+    instance->layer.post_process = NULL;
+    instance->layer.pre_process  = NULL;
 
     // set up net engine
     ret = LAYER_setup_net_engine(&(instance->layer.net_engine));
 
     return ret;
+}
+
+void LAYER_CNN_set_callbacks(CNN_Layer *instance, Layer_Data_Post_Process *post_process, Layer_Data_Pre_Process  *pre_process){
+    instance->layer.post_process = post_process;
+    instance->layer.pre_process  = pre_process;
 }
 
 
@@ -163,9 +170,10 @@ int LAYER_CNN_process(CNN_Layer *instance){
 
     while (node != NULL) {
         // xil_printf("CNN Processing %d \r\n", node->config_data.index);
-
+        instance->layer.pre_process(instance->layer);
         ret = NET_ENGINE_process_cnn(&(instance->layer.net_engine), instance->layer.input, instance->layer.output, node->config_data);
         NET_ENGINE_reset(&(instance->layer.net_engine));
+        instance->layer.post_process(instance->layer);
         node = node->next;
         i++;
     }

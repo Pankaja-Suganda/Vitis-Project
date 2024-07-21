@@ -19,6 +19,8 @@ typedef enum{
 } LAYER_STATE;
 
 
+
+
 typedef struct Max_Pooling_Config_Data_{
     u8 index;
     u32 Reserved_1;
@@ -26,14 +28,22 @@ typedef struct Max_Pooling_Config_Data_{
     CONFIG_DATA_STATE state;
 }Max_Pooling_Config_Data;
 
+typedef struct Layer_ Layer;
+typedef void *(Layer_Data_Post_Process)(Layer layer);
+typedef void *(Layer_Data_Pre_Process)(Layer layer);
+
 typedef struct Layer_{
     u8 index;
     u32 *input;
     u32 *output;
     u32 *temp;
+    Layer_Data_Post_Process *post_process;
+    Layer_Data_Pre_Process  *pre_process;
     Net_Engine_Inst net_engine;
+    int filter_count;
     LAYER_STATE state;
 } Layer;
+
 
 typedef struct CNN_Layer_{
     Layer layer;
@@ -56,6 +66,8 @@ int LAYER_Max_pooling_init(Max_Pooling_Layer *instance, u32* input, u32* output)
 int LAYER_process(Net_Engine_Inst *instance, u32* input, u32* output);
 
 int LAYER_CNN_load_data(CNN_Layer *instance, CNN_Config_Data data);
+
+void LAYER_CNN_set_callbacks(CNN_Layer *instance, Layer_Data_Post_Process *post_process, Layer_Data_Pre_Process  *pre_process);
 
 int LAYER_CNN_process(CNN_Layer *instance);
 

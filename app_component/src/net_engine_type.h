@@ -102,17 +102,17 @@ typedef enum{
 typedef struct CNN_Config_Data_{
     u8 index;
     struct {
-        float Kernal_1;
-        float Kernal_2;
-        float Kernal_3;
-        float Kernal_4;
-        float Kernal_5;
-        float Kernal_6;
-        float Kernal_7;
-        float Kernal_8;
-        float Kernal_9;
+        u32 Kernal_1;
+        u32 Kernal_2;
+        u32 Kernal_3;
+        u32 Kernal_4;
+        u32 Kernal_5;
+        u32 Kernal_6;
+        u32 Kernal_7;
+        u32 Kernal_8;
+        u32 Kernal_9;
     } Kernal;
-    float Bias;
+    u32 Bias;
     u32 Reserved_1;
     u32 Reserved_2;
     CONFIG_DATA_STATE state;
