@@ -410,7 +410,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
     Xil_DCacheInvalidateRange((UINTPTR)output, 97 * 97 * 4);
 
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_DISABLE_VALUE);
-    NET_ENGINE_dump_regs(instance);
+    // NET_ENGINE_dump_regs(instance);
 
     return NET_ENGINE_OK;
 }

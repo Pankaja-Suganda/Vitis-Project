@@ -5,6 +5,7 @@
 
 /****************** Include Files ********************/
 #include "net_engine.h"
+#include "channels.h"
 
 /**************************** Type Definitions *****************************/
 #define MAX_ROW_SIZE        100
@@ -50,6 +51,10 @@ typedef struct CNN_Layer_{
     CNN_Data_Node *data;
     u32 completed_count;
     u32 total_count;
+    Channel_Node *input_channels;
+    u8           input_channels_count;
+    Channel_Node *output_channels;
+    u8           output_channels_count;
 } CNN_Layer;
 
 typedef struct Max_Pooling_Layer_{
@@ -59,7 +64,7 @@ typedef struct Max_Pooling_Layer_{
     u32 total_count
 } Max_Pooling_Layer;
 
-int LAYER_CNN_init(CNN_Layer *instance, u32* input, u32* output);
+int LAYER_CNN_init(CNN_Layer *instance);
 
 int LAYER_Max_pooling_init(Max_Pooling_Layer *instance, u32* input, u32* output);
 
@@ -70,5 +75,7 @@ int LAYER_CNN_load_data(CNN_Layer *instance, CNN_Config_Data data);
 void LAYER_CNN_set_callbacks(CNN_Layer *instance, Layer_Data_Post_Process *post_process, Layer_Data_Pre_Process  *pre_process);
 
 int LAYER_CNN_process(CNN_Layer *instance);
+
+int LAYER_add_channel(CNN_Layer *instance, Channel channel);
 
 #endif // NET_ENGINE_LAYER_H
