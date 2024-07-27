@@ -48,12 +48,17 @@ typedef struct Channel_Kernal_Data_Node_{
 
 
 typedef struct Channel_{
-    u8 index;
-    u8 kernal_data_count;
-    Channel_Kernal_Data_Node *kernal_node;
-    CHANNEL_STATE state;
+    u8  index;
+    u8  kernal_data_count;
+    u32 height;
+    u32 width;
+    u32 total_bytes;
+    u32* input_ptr;
+    u32* output_ptr;
+    u32* temp_ptr;
     CHANNEL_TYPE  type;
-    float* input_ptr;
+    CHANNEL_STATE state;
+    Channel_Kernal_Data_Node *kernal_node;
 } Channel;
 
 typedef struct Channel_Node_{
@@ -61,7 +66,7 @@ typedef struct Channel_Node_{
     Channel              data;
 } Channel_Node;
 
-int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, float *input_ptr);
+int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr);
 
 int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *reference);
 

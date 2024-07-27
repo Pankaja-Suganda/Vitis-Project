@@ -55,6 +55,9 @@ typedef struct CNN_Layer_{
     u8           input_channels_count;
     Channel_Node *output_channels;
     u8           output_channels_count;
+    u32* memory_ptr;
+    u32  used_mem_size;
+    u32  availale_mem_size;
 } CNN_Layer;
 
 typedef struct Max_Pooling_Layer_{
@@ -64,7 +67,7 @@ typedef struct Max_Pooling_Layer_{
     u32 total_count
 } Max_Pooling_Layer;
 
-int LAYER_CNN_init(CNN_Layer *instance);
+int LAYER_CNN_init(CNN_Layer *instance, u32* memory_ptr, u32 memory_len);
 
 int LAYER_Max_pooling_init(Max_Pooling_Layer *instance, u32* input, u32* output);
 

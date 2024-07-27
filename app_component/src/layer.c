@@ -70,7 +70,7 @@ int LAYER_Max_pooling_process(Max_Pooling_Layer *instance){
     return ret;
 }
 
-int LAYER_CNN_init(CNN_Layer *instance){
+int LAYER_CNN_init(CNN_Layer *instance, u32* memory_ptr, u32 memory_len){
     int ret = 0;
 
     // set up max poolng details
@@ -87,6 +87,9 @@ int LAYER_CNN_init(CNN_Layer *instance){
     instance->output_channels       = NULL;
     instance->input_channels_count  = 0;
     instance->output_channels_count = 0;
+    instance->memory_ptr            = memory_ptr;
+    instance->availale_mem_size     = memory_len;
+    instance->used_mem_size         = 0;
 
     // set up net engine
     ret = LAYER_setup_net_engine(&(instance->layer.net_engine));
@@ -239,6 +242,14 @@ int LAYER_add_channel(CNN_Layer *instance, Channel channel){
         instance->input_channels_count++;
     }
     else if(channel.type == CHANNEL_TYPE_OUTPUT){
+        channel.output_ptr       = instance->memory_ptr + instance->used_mem_size;
+        instance->used_mem_size     += channel.total_bytes;
+        instance->availale_mem_size -= channel.total_bytes;
+
+        channel.temp_ptr             = instance->memory_ptr + instance->used_mem_size;
+        instance->used_mem_size     += channel.total_bytes;
+        instance->availale_mem_size -= channel.total_bytes;
+        
         channel.index = instance->output_channels_count;
         if(instance->output_channels == NULL){
             instance->output_channels = create_channel_node(channel);

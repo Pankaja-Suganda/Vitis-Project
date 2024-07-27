@@ -15,18 +15,26 @@ DEFAULT SET TO 0x01000000
 #define RX_BUFFER_BASE		(MEM_BASE_ADDR + 0x00300000)
 #define RX_BUFFER_HIGH		(MEM_BASE_ADDR + 0x004FFFFF)
 
+
 // add channel size
-int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, float *input_ptr){
+int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr){
     instance->type              = type;
+    instance->height            = height;
+    instance->width             = width;
+    instance->total_bytes       = height*width;
     instance->state             = CHANNEL_STATE_NOT_STARTED;
     instance->kernal_node       = NULL;
     instance->kernal_data_count = 0;
 
     if(type == CHANNEL_TYPE_INPUT){
-        instance->input_ptr = input_ptr;
+        instance->input_ptr  = input_ptr;
+        instance->output_ptr = NULL;
+        instance->temp_ptr   = NULL;
     }
     else{
-        instance->input_ptr = NULL;
+        instance->input_ptr  = NULL;
+        instance->output_ptr = NULL;
+        instance->temp_ptr   = NULL;
     }
     return 0;
 }
@@ -64,9 +72,11 @@ static void append_kernal_node(Channel_Kernal_Data_Node** head_ref, Channel_Kern
 
 int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *reference){
     if(instance->type == CHANNEL_TYPE_OUTPUT){
-        data.reference = reference;
+        data.reference = (Channel*)reference;
         data.state     = CHANNEL_STATE_NOT_STARTED;
         data.index     = instance->kernal_data_count;
+
+        Channel *test = (Channel*)data.reference;
 
         if(instance->kernal_node == NULL){
             instance->kernal_node = create_kernal_node(data);
@@ -79,31 +89,48 @@ int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *re
 }
 
 static void CHANNEL_post_process(Channel *instance){
-    printf("CHANNEL post process \r\n");
+    float *temp_ptr = (float*)instance->temp_ptr;
+    float *out_ptr  = (float*)instance->output_ptr;
+    int Index = 0;
+    printf("CHANNEL Post Process Temp\r\n");
+    for (int Index = 0; Index < 10; Index++) {
+        printf("%f, ", (float)temp_ptr[Index]);
+    }
+    printf("\n");
+
+    for (int Index = 0; Index < 10; Index++) {
+       out_ptr[Index] = out_ptr[Index] + temp_ptr[Index];
+    }
+
+    printf("CHANNEL Post Process Out\r\n");
+    for (int Index = 0; Index < 10; Index++) {
+        printf("%f, ", (float)out_ptr[Index]);
+    }
+    printf("\n");
 }
 
 static void CHANNEL_kernal_to_net_config(Channel_Kernal_Data kernal_data, CNN_Config_Data* net_config_data){
-    // net_config_data->Kernal.Kernal_1 = kernal_data.Kernal.Kernal_1;
-    // net_config_data->Kernal.Kernal_2 = kernal_data.Kernal.Kernal_2;
-    // net_config_data->Kernal.Kernal_3 = kernal_data.Kernal.Kernal_3;
-    // net_config_data->Kernal.Kernal_4 = kernal_data.Kernal.Kernal_4;
-    // net_config_data->Kernal.Kernal_5 = kernal_data.Kernal.Kernal_5;
-    // net_config_data->Kernal.Kernal_6 = kernal_data.Kernal.Kernal_6;
-    // net_config_data->Kernal.Kernal_7 = kernal_data.Kernal.Kernal_7;
-    // net_config_data->Kernal.Kernal_8 = kernal_data.Kernal.Kernal_8;
-    // net_config_data->Kernal.Kernal_9 = kernal_data.Kernal.Kernal_9;
-    // net_config_data->Bias            = kernal_data.Bias;
+    net_config_data->Kernal.Kernal_1 = kernal_data.Kernal.Kernal_1;
+    net_config_data->Kernal.Kernal_2 = kernal_data.Kernal.Kernal_2;
+    net_config_data->Kernal.Kernal_3 = kernal_data.Kernal.Kernal_3;
+    net_config_data->Kernal.Kernal_4 = kernal_data.Kernal.Kernal_4;
+    net_config_data->Kernal.Kernal_5 = kernal_data.Kernal.Kernal_5;
+    net_config_data->Kernal.Kernal_6 = kernal_data.Kernal.Kernal_6;
+    net_config_data->Kernal.Kernal_7 = kernal_data.Kernal.Kernal_7;
+    net_config_data->Kernal.Kernal_8 = kernal_data.Kernal.Kernal_8;
+    net_config_data->Kernal.Kernal_9 = kernal_data.Kernal.Kernal_9;
+    net_config_data->Bias            = kernal_data.Bias;
 
-    net_config_data->Kernal.Kernal_1 = 0x3F800000;
-    net_config_data->Kernal.Kernal_2 = 0x3F800000;
-    net_config_data->Kernal.Kernal_3 = 0x3F800000;
-    net_config_data->Kernal.Kernal_4 = 0x3F800000;
-    net_config_data->Kernal.Kernal_5 = 0x3F800000;
-    net_config_data->Kernal.Kernal_6 = 0x3F800000;
-    net_config_data->Kernal.Kernal_7 = 0x3F800000; 
-    net_config_data->Kernal.Kernal_8 = 0x3F800000;
-    net_config_data->Kernal.Kernal_9 = 0x3F800000;
-    net_config_data->Bias            = 0x3F800000;
+    // net_config_data->Kernal.Kernal_1 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_2 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_3 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_4 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_5 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_6 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_7 = 0x3F800000; 
+    // net_config_data->Kernal.Kernal_8 = 0x3F800000;
+    // net_config_data->Kernal.Kernal_9 = 0x3F800000;
+    // net_config_data->Bias            = 0x3F800000;
 
     net_config_data->state = CONFIG_DATA_STATE_NOT_STARTED;
 }
@@ -122,7 +149,7 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
     }
 
     while (cur_kernal != NULL){
-        channel = &(cur_kernal->data.reference);
+        channel = cur_kernal->data.reference;
 
         CHANNEL_kernal_to_net_config(cur_kernal->data, &net_config_data);
 
@@ -131,7 +158,7 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
         // calling preprocess function -> can add preprocess function here
         // instance->layer.pre_process(instance->layer);
         if(channel->input_ptr != NULL){
-            NET_ENGINE_process_cnn(net_engine, (u32*)channel->input_ptr, (u32*)RX_BUFFER_BASE, net_config_data);
+            NET_ENGINE_process_cnn(net_engine, (u32*)channel->input_ptr, (u32*)instance->temp_ptr, net_config_data);
         }
         // CHANNEL_process_channel(&cur_channel->data, &(instance->layer.net_engine));
 

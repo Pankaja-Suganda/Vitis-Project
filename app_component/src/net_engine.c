@@ -449,6 +449,8 @@ static NET_STATUS NET_ENGINE_set_cnn_values(Net_Engine_Inst *instance, CNN_Confi
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9, data.Kernal.Kernal_9);
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_BIAS_REG,     data.Bias);
 
+    // NET_ENGINE_dump_regs(instance);
+
     return NET_ENGINE_OK;
 }
 

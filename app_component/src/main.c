@@ -14,8 +14,10 @@
 #include "layer.h"
 #include "conv_layer.h"
 #include <stdio.h>
+#include <strings.h>
 #include <xil_printf.h>
 #include "channels.h"
+#include "net_engine_type.h"
 
 
 #define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
@@ -65,7 +67,7 @@ XTime time_Global_end;
 
 
 void post_process(Layer layer){
-    float *out_ptr = (float*)layer.output;
+    float *out_ptr  = (float*)layer.output;
     float *temp_ptr = (float*)layer.temp;
     int Index = 0;
     printf("Post Process\r\n");
@@ -80,40 +82,87 @@ void pre_process(Layer layer){
     xil_printf("Pre Process\r\n");
 }
 
+
+
+
+static Channel_Kernal_Data kernal_data[] = {
+    { 0, { 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000 } , 0x3F800000},
+    { 1, { 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000 } , 0x3F800000},
+    { 2, { 0x3F800000, 0x3F800000, 0x3F800000, 0x00000000, 0x00000000, 0x00000000, 0xBF800000, 0xBF800000, 0xBF800000 } , 0x3F800000},
+};
+
+#define INPUT_SIZE  100
+#define OUTPUT_SIZE 98
+
+
+#ifndef DDR_BASE_ADDR
+#warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
+DEFAULT SET TO 0x01000000
+#define MEM_BASE_ADDR		0x01000000
+#else
+#define MEM_BASE_ADDR		(DDR_BASE_ADDR + 0x1000000)
+#endif
+
+#define FIRST_CONV_LAYER_MEM_BASE (MEM_BASE_ADDR + 0x00500000)
+#define FIRST_CONV_LAYER_MEM_LEN  (0x20000)
+#define FIRST_CONV_LAYER_MEM_HIGH (FIRST_CONV_LAYER_MEM_BASE + FIRST_CONV_LAYER_MEM_LEN)
+
+int Layer_PReLU(CNN_Layer* instance){
+
+}
+
+int Layer_maxpooling(CNN_Layer* instance){
+    
+}
+
 int main(){
     int ret = 0;
     CNN_Layer conv_layer_1;
     Channel   input_R, input_G, input_B;
-    Channel   output_1, output_2;
+    Channel   output_1, output_2, output_3, output_4, output_5, output_6, output_7, output_8, output_9, output_10;
+    Channel out_chan[10] = {
+        output_1, output_2, output_3, output_4, output_5, output_6, output_7, output_8, output_9, output_10
+    };
 
     Channel_Kernal_Data data_1 = {1}, data_2 = {2}, data_3 = {3};
     Channel_Kernal_Data data_4 = {4}, data_5 = {5}, data_6 = {6};
-    ret = LAYER_CNN_init(&conv_layer_1);
+    ret = LAYER_CNN_init(&conv_layer_1, (u32*)FIRST_CONV_LAYER_MEM_BASE, FIRST_CONV_LAYER_MEM_LEN);
 
-    CHANNEL_init(&input_R, CHANNEL_TYPE_INPUT, (float*)&image_data);
-    CHANNEL_init(&input_G, CHANNEL_TYPE_INPUT, (float*)&image_data);
-    CHANNEL_init(&input_B, CHANNEL_TYPE_INPUT, (float*)&image_data);
+    // creating input channels
+    CHANNEL_init(&input_R, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_red);
+    CHANNEL_init(&input_G, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_green);
+    CHANNEL_init(&input_B, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_blue);
 
+    // adding input channels
     LAYER_add_channel(&conv_layer_1, input_R);
     LAYER_add_channel(&conv_layer_1, input_B);
     LAYER_add_channel(&conv_layer_1, input_G);
 
-    CHANNEL_init(&output_1, CHANNEL_TYPE_OUTPUT, NULL);
-    CHANNEL_init(&output_2, CHANNEL_TYPE_OUTPUT, NULL);
-
-    CHANNEL_load_kernal(&output_1, data_1, &input_R);
-    CHANNEL_load_kernal(&output_1, data_2, &input_B);
-    CHANNEL_load_kernal(&output_1, data_3, &input_G);
-
-    data_6.Kernal.Kernal_1 =  0x3F800000;
-    data_6.Bias =  0x3F800000;
-
-    CHANNEL_load_kernal(&output_2, data_4, &input_R);
-    CHANNEL_load_kernal(&output_2, data_5, &input_B);
-    CHANNEL_load_kernal(&output_2, data_6, &input_G);
+    // creating output channels
+    // CHANNEL_init(&output_1, CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
+    // CHANNEL_init(&output_2, CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
+    // loading kernals to output channel 1
+    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[0], &input_R);
+    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[1], &input_G);
+    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[2], &input_B);
+    // loading kernals to output channel 2
+    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[3], &input_R);
+    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[4], &input_G);
+    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[5], &input_B);
     
-    LAYER_add_channel(&conv_layer_1, output_1);
-    LAYER_add_channel(&conv_layer_1, output_2);
+    // adding output channels
+    // LAYER_add_channel(&conv_layer_1, output_1);
+    // LAYER_add_channel(&conv_layer_1, output_2);
+    for(int i = 0; i < 10; i++){
+        CHANNEL_init(&out_chan[i], CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
+
+        CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 0], &input_R);
+        CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 1], &input_G);
+        CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 2], &input_B);
+
+        LAYER_add_channel(&conv_layer_1, out_chan[i]);
+    }
+
 
     LAYER_CNN_set_callbacks(&conv_layer_1, (Layer_Data_Post_Process*)&post_process, (Layer_Data_Pre_Process*)&pre_process);
 
