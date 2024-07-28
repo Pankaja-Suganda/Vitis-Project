@@ -38,7 +38,10 @@ static Channel_Kernal_Data layer_1_f10_weights[] = {
 };
 
 
-
+static u32 PRelu_Layer_2_10_weights[10] ={
+    0xbf201aa1, 0xbe58c2e1, 0x3f817ed8, 0x3ee1da8f, 0xbf8472ad, 
+    0x3ea49d7d, 0xbe988525, 0x3e80f74f, 0xbf61fb00, 0xbfa39fe0
+};
 
 
 

@@ -1,0 +1,10 @@
+
+#ifndef TASK_PRIORITY_H
+#define TASK_PRIORITY_H
+
+typedef enum {
+    SYSTEM_TASK_PRIORITY,
+    LOWEST_TASK_PRIORITY,
+} TASK_PRIORITY;
+
+#endif // TASK_PRIORITY_H

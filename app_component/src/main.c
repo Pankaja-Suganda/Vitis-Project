@@ -85,12 +85,6 @@ void pre_process(Layer layer){
 
 
 
-static Channel_Kernal_Data kernal_data[] = {
-    { 0, { 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000 } , 0x3F800000},
-    { 1, { 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000, 0x3F800000 } , 0x3F800000},
-    { 2, { 0x3F800000, 0x3F800000, 0x3F800000, 0x00000000, 0x00000000, 0x00000000, 0xBF800000, 0xBF800000, 0xBF800000 } , 0x3F800000},
-};
-
 #define INPUT_SIZE  100
 #define OUTPUT_SIZE 98
 
@@ -107,13 +101,40 @@ DEFAULT SET TO 0x01000000
 #define FIRST_CONV_LAYER_MEM_LEN  (0x20000)
 #define FIRST_CONV_LAYER_MEM_HIGH (FIRST_CONV_LAYER_MEM_BASE + FIRST_CONV_LAYER_MEM_LEN)
 
-int Layer_PReLU(CNN_Layer* instance){
+// int Layer_PReLU(CNN_Layer* instance, float *input, float *output, float *alpha, int height, int width, int channels) {
+//     for (int c = 0; c < channels; c++) {
+//         for (int h = 0; h < height; h++) {
+//             for (int w = 0; w < width; w++) {
+//                 int idx = c * height * width + h * width + w;
+//                 output[idx] = input[idx] > 0 ? input[idx] : alpha[c] * input[idx];
+//             }
+//         }
+//     }
+// }
 
-}
-
-int Layer_maxpooling(CNN_Layer* instance){
+// int Layer_maxpooling(CNN_Layer* instance, float *input, float *output, int input_height, int input_width, int channels, int pool_size, int stride, int padding) {
+//     int output_height = (input_height + 2 * padding - pool_size) / stride + 1;
+//     int output_width = (input_width + 2 * padding - pool_size) / stride + 1;
     
-}
+//     for (int c = 0; c < channels; c++) {
+//         for (int h = 0; h < output_height; h++) {
+//             for (int w = 0; w < output_width; w++) {
+//                 float max_val = -1.0 / 0.0; // Initialize to negative infinity
+//                 for (int i = 0; i < pool_size; i++) {
+//                     for (int j = 0; j < pool_size; j++) {
+//                         int input_h = h * stride + i - padding;
+//                         int input_w = w * stride + j - padding;
+//                         if (input_h >= 0 && input_h < input_height && input_w >= 0 && input_w < input_width) {
+//                             float val = input[c * input_height * input_width + input_h * input_width + input_w];
+//                             max_val = MAX(max_val, val);
+//                         }
+//                     }
+//                 }
+//                 output[c * output_height * output_width + h * output_width + w] = max_val;
+//             }
+//         }
+//     }
+// }
 
 int main(){
     int ret = 0;
@@ -126,6 +147,7 @@ int main(){
 
     Channel_Kernal_Data data_1 = {1}, data_2 = {2}, data_3 = {3};
     Channel_Kernal_Data data_4 = {4}, data_5 = {5}, data_6 = {6};
+    
     ret = LAYER_CNN_init(&conv_layer_1, (u32*)FIRST_CONV_LAYER_MEM_BASE, FIRST_CONV_LAYER_MEM_LEN);
 
     // creating input channels
