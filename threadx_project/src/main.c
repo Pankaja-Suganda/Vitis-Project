@@ -101,7 +101,7 @@ void vSystemTask(void *pvParameters) {
 }
 
 int main(void) {
-    xTaskCreate(vSystemTask, "Task1", 60000, NULL, SYSTEM_TASK_PRIORITY, &system_task_handler);
+    xTaskCreate(vSystemTask, "Task1", 20000, NULL, SYSTEM_TASK_PRIORITY, &system_task_handler);
     
     vTaskStartScheduler();
 

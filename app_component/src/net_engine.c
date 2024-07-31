@@ -31,6 +31,9 @@
 #define REG_DUMP(reg, value) xil_printf("\tReg %s - %08X \r\n", #reg, value )
 
 
+
+static u32* dma_input_ptr;
+
 /************************** Function Definitions ***************************/
 u32 checkIdle(u32 baseAddress,u32 offset){
 	u32 status;
@@ -39,12 +42,15 @@ u32 checkIdle(u32 baseAddress,u32 offset){
 }
 
 int count = 0;
+int img_received = 1;
 
 static void row_completed_ISR(void *CallBackRef){
 	u32 IrqStatus;
 	int status;
     Net_Engine_Inst *instance;
-    u32* temp = instance->cur_data.input;
+    instance = (Net_Engine_Inst*) CallBackRef;
+
+    u32* temp = dma_input_ptr;
 
     // xil_printf("%d location \r\n", temp);
 
@@ -61,9 +67,9 @@ static void row_completed_ISR(void *CallBackRef){
     // xil_printf("imageProcISR %08x, %d\n", instance->cur_data.input, count);
     // xil_printf("\tReg Status -  %04x\n", instance->net_engine_regs->Status_3);
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
-	if(instance->cur_data.state != NET_STATE_COMPLETED){
-		status = XAxiDma_SimpleTransfer(&(instance->dma_inst), instance->cur_data.input, NET_ENGINE_INPUT_ROW_LENGTH * 4, XAXIDMA_DMA_TO_DEVICE);
-        instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH);
+    if(img_received){
+        status = XAxiDma_SimpleTransfer(&(instance->dma_inst), dma_input_ptr, NET_ENGINE_INPUT_ROW_LENGTH * 4, XAXIDMA_DMA_TO_DEVICE);
+        dma_input_ptr = dma_input_ptr + (NET_ENGINE_INPUT_ROW_LENGTH);
 	}
 	XScuGic_Enable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 }
@@ -85,6 +91,7 @@ static void received_ISR(void *CallBackRef){
     // XScuGic_Disable(&(instance->intc_inst), instance->config.receive_isr_id);
 	/* Acknowledge pending interrupts */
 	instance->cur_data.state = NET_STATE_COMPLETED;
+    img_received = 0;
     xil_printf("dmaReceiveISR\n");
 
 
@@ -285,28 +292,28 @@ NET_STATUS NET_ENGINE_config(Net_Engine_Inst *instance, NET_CONFIG config){
 void check_dma_status(XAxiDma *dma_inst) {
     u32 dma_status;
 
-    // dma_status = XAxiDma_ReadReg(dma_inst->RegBase + XAXIDMA_RX_OFFSET, XAXIDMA_SR_OFFSET);
-    // xil_printf("DMA Status: %08X\n", dma_status);
+    dma_status = XAxiDma_ReadReg(dma_inst->RegBase + XAXIDMA_RX_OFFSET, XAXIDMA_SR_OFFSET);
+    xil_printf("DMA Status: %08X\n", dma_status);
 
-    // if (dma_status & XAXIDMA_ERR_INTERNAL_MASK) xil_printf("DMA Internal Error\n");
-    // if (dma_status & XAXIDMA_ERR_SG_SLV_MASK) xil_printf("DMA Slave Error\n");
-    // if (dma_status & XAXIDMA_ERR_SG_DEC_MASK) xil_printf("DMA Decode Error\n");
-    // if (dma_status & XAXIDMA_ERR_SG_INT_MASK) xil_printf("DMA SG Internal Error\n");
-    // if (dma_status & XAXIDMA_HALTED_MASK) xil_printf("DMA Halted\n");
-    // if (dma_status & XAXIDMA_ERR_SLAVE_MASK) xil_printf("DMA Slave Mask Error\n");
-    // if (dma_status & XAXIDMA_ERR_DECODE_MASK) xil_printf("DMA Decode Mask Error\n");
+    if (dma_status & XAXIDMA_ERR_INTERNAL_MASK) xil_printf("DMA Internal Error\n");
+    if (dma_status & XAXIDMA_ERR_SG_SLV_MASK) xil_printf("DMA Slave Error\n");
+    if (dma_status & XAXIDMA_ERR_SG_DEC_MASK) xil_printf("DMA Decode Error\n");
+    if (dma_status & XAXIDMA_ERR_SG_INT_MASK) xil_printf("DMA SG Internal Error\n");
+    if (dma_status & XAXIDMA_HALTED_MASK) xil_printf("DMA Halted\n");
+    if (dma_status & XAXIDMA_ERR_SLAVE_MASK) xil_printf("DMA Slave Mask Error\n");
+    if (dma_status & XAXIDMA_ERR_DECODE_MASK) xil_printf("DMA Decode Mask Error\n");
 
-    // if (dma_status & XAXIDMA_ERR_ALL_MASK) {
-    //     xil_printf("DMA Error\n");
-    //     // if (dma_status & XAXIDMA_ERR_INTERNAL_MASK) xil_printf("DMA Internal Error\n");
-    //     // if (dma_status & XAXIDMA_ERR_SG_SLV_FLT_MASK) xil_printf("DMA Slave Error\n");
-    //     // if (dma_status & XAXIDMA_ERR_SG_DECERR_MASK) xil_printf("DMA Decode Error\n");
-    //     // if (dma_status & XAXIDMA_ERR_SG_INTERR_MASK) xil_printf("DMA SG Internal Error\n");
+    if (dma_status & XAXIDMA_ERR_ALL_MASK) {
+        xil_printf("DMA Error\n");
+        // if (dma_status & XAXIDMA_ERR_INTERNAL_MASK) xil_printf("DMA Internal Error\n");
+        // if (dma_status & XAXIDMA_ERR_SG_SLV_FLT_MASK) xil_printf("DMA Slave Error\n");
+        // if (dma_status & XAXIDMA_ERR_SG_DECERR_MASK) xil_printf("DMA Decode Error\n");
+        // if (dma_status & XAXIDMA_ERR_SG_INTERR_MASK) xil_printf("DMA SG Internal Error\n");
 
-    //     // Clear the error interrupt
-    //     XAxiDma_IntrAckIrq(dma_inst, XAXIDMA_ERR_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
-    //     NET_ENGINE_reset(dma_inst);
-    // }
+        // Clear the error interrupt
+        XAxiDma_IntrAckIrq(dma_inst, XAXIDMA_ERR_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+        NET_ENGINE_reset(dma_inst);
+    }
 }
 
 void DumpDmaRegisters(XAxiDma *AxiDmaInst) {
@@ -361,14 +368,22 @@ void DumpDmaRegisters(XAxiDma *AxiDmaInst) {
     // xil_printf("S2MM Bytes To Transfer Reg: 0x%08x\n", regValue);
 }
 
-static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_Engine_Img *output){
+
+
+static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 *output){
     NET_STATUS ret = NET_ENGINE_OK;
+
+    instance->cur_data.input  = NULL;
+    instance->cur_data.output = NULL;
 
     instance->cur_data.input  = input;
     instance->cur_data.output = output;
     instance->cur_data.state  = NET_STATE_BUSY;
     instance->cur_data.received_row_count = 0;
     instance->cur_data.send_row_count     = 0;
+
+    dma_input_ptr = input  + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
+
 
     count = 3;
 
@@ -379,8 +394,10 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
 
     instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
 
-    // NET_ENGINE_dump_regs(instance);
+    printf("output %08x, input %08x \r\n", output, input);
 
+    // NET_ENGINE_dump_regs(instance);
+    img_received = 1;
 	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH, XAXIDMA_DEVICE_TO_DMA);
 	if(ret != XST_SUCCESS){
 		xil_printf("DMA Receive Transfer failed %d\n", ret);
@@ -394,8 +411,10 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, Net_
 	}
 
     int k = 0;
-    while(instance->cur_data.state != NET_STATE_COMPLETED){
-        // check_dma_status(&(instance->dma_inst));
+    
+    // while(instance->cur_data.state != NET_STATE_COMPLETED){
+    while (img_received){
+        check_dma_status(&(instance->dma_inst));
         k++;
         // if(k>10){
         //     // XAxiDma_Pause(&(instance->dma_inst));

@@ -92,21 +92,19 @@ static void CHANNEL_post_process(Channel *instance){
     float *temp_ptr = (float*)instance->temp_ptr;
     float *out_ptr  = (float*)instance->output_ptr;
     int Index = 0;
-    printf("CHANNEL Post Process Temp\r\n");
-    for (int Index = 0; Index < 10; Index++) {
-        printf("%f, ", (float)temp_ptr[Index]);
-    }
-    printf("\n");
 
-    for (int Index = 0; Index < 10; Index++) {
-       out_ptr[Index] = out_ptr[Index] + temp_ptr[Index];
+    for (int Index = 0; Index < instance->total_bytes; Index++) {
+        out_ptr[Index] = out_ptr[Index] + temp_ptr[Index];
+        if(index < 10)
+            printf("temp %f, out %f \\r\n", temp_ptr[Index], out_ptr[Index]);
     }
+}
 
-    printf("CHANNEL Post Process Out\r\n");
-    for (int Index = 0; Index < 10; Index++) {
-        printf("%f, ", (float)out_ptr[Index]);
+static void CHANNEL_pre_process(Channel *instance){
+    float *out_ptr  = (float*)instance->output_ptr;
+    for (int Index = 0; Index < instance->total_bytes; Index++) {
+        out_ptr[Index] = 0.0f;
     }
-    printf("\n");
 }
 
 static void CHANNEL_kernal_to_net_config(Channel_Kernal_Data kernal_data, CNN_Config_Data* net_config_data){
@@ -148,8 +146,12 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
         return;
     }
 
+    for(int index = 0; index < instance->total_bytes; index++){
+        instance->output_ptr[index] = 0.0;
+    }
+
     while (cur_kernal != NULL){
-        channel = cur_kernal->data.reference;
+        channel = (Channel*)cur_kernal->data.reference;
 
         CHANNEL_kernal_to_net_config(cur_kernal->data, &net_config_data);
 
@@ -157,6 +159,8 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
 
         // calling preprocess function -> can add preprocess function here
         // instance->layer.pre_process(instance->layer);
+        // CHANNEL_pre_process(instance);
+
         if(channel->input_ptr != NULL){
             NET_ENGINE_process_cnn(net_engine, (u32*)channel->input_ptr, (u32*)instance->temp_ptr, net_config_data);
         }
@@ -170,4 +174,10 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
         // jumping to next channel
         cur_kernal = cur_kernal->next;
     }
+
+    printf("CHANNEL Post Process Out %p\r\n", instance->output_ptr);
+    for (int Index = 0; Index < 10; Index++) {
+        printf("%f, ", (float)instance->output_ptr[Index]);
+    }
+    printf("\n");
 }

@@ -43,7 +43,7 @@ static u32 PRelu_Layer_2_10_weights[10] ={
     0x3ea49d7d, 0xbe988525, 0x3e80f74f, 0xbf61fb00, 0xbfa39fe0
 };
 
-static u32 layer_4_f16_weights[] = {
+static Channel_Kernal_Data layer_4_f16_weights[] = {
     { 0, { 0xbdee983a, 0xbec46272, 0xbf141f45, 0x3ea34484, 0x3ceb9d7b, 0xbf00e498, 0xbeaec5ce, 0xbe953ee2, 0x3f5600ce}, 0x00000000, CHANNEL_STATE_NOT_STARTED},
     { 0, { 0xbcbfa468, 0x3e96cbe4, 0x3e761280, 0x3d1e09e8, 0x3e0ca33d, 0xbedc6ed3, 0xbe961b99, 0xbe1d6249, 0x3cdc4235}, 0x00000000, CHANNEL_STATE_NOT_STARTED},
     { 0, { 0xbdbbfc6b, 0x3e81307e, 0x3ed2e63a, 0x3e11a25f, 0xbd2054e7, 0xbeb6c6db, 0xbb982972, 0x3ea1ee2a, 0xbeedf44c}, 0x00000000, CHANNEL_STATE_NOT_STARTED},

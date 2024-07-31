@@ -14,24 +14,24 @@ int LAYER_setup_net_engine(Net_Engine_Inst *instance){
 
     // net engine initializing
     Status = NET_ENGINE_init(instance, NET_ENGINE_1_CONFIG_BASEADDR, NET_ENGINE_1_AXI_DMA_BASEADDR);
-    if(Status == NET_ENGINE_OK){
+    if(Status != NET_ENGINE_OK){
         xil_printf("Net engine init failed\n");
     }
 
     // intterupt setup
     Status = NET_ENGINE_intr_setup(instance, XPAR_XSCUGIC_0_BASEADDR);
-    if(Status == NET_ENGINE_OK){
+    if(Status != NET_ENGINE_OK){
         xil_printf("Net engine interrupt setup failed\n");
     }
 
     // register interrupts
     Status = NET_ENGINE_register_intr(instance, NET_ENGINE_RECEIVE_INTR, XPS_FPGA1_INT_ID);
-    if(Status == NET_ENGINE_OK){
+    if(Status != NET_ENGINE_OK){
         xil_printf("Net engine register NET_ENGINE_RECEIVE_INTR failed\n");
     }
 
     Status = NET_ENGINE_register_intr(instance, NET_ENGINE_ROW_COMPLETE_INTR, XPS_FPGA2_INT_ID);
-    if(Status == NET_ENGINE_OK){
+    if(Status != NET_ENGINE_OK){
         xil_printf("Net engine register NET_ENGINE_ROW_COMPLETE_INTR failed\n");
     }
     return 0;
@@ -173,7 +173,7 @@ int LAYER_CNN_process(CNN_Layer *instance){
 
     while (cur_channel != NULL){
         // calling preprocess function
-        instance->layer.pre_process(instance->layer);
+        // instance->layer.pre_process(instance->layer);
 
         CHANNEL_process_channel(&cur_channel->data, &(instance->layer.net_engine));
 
@@ -242,11 +242,12 @@ int LAYER_add_channel(CNN_Layer *instance, Channel channel){
         instance->input_channels_count++;
     }
     else if(channel.type == CHANNEL_TYPE_OUTPUT){
-        channel.output_ptr       = instance->memory_ptr + instance->used_mem_size;
+        channel.output_ptr          = instance->memory_ptr + instance->used_mem_size;
         instance->used_mem_size     += channel.total_bytes;
         instance->availale_mem_size -= channel.total_bytes;
 
-        channel.temp_ptr             = instance->memory_ptr + instance->used_mem_size;
+        // channel.temp_ptr             = instance->memory_ptr + instance->used_mem_size;
+        channel.temp_ptr             = (u32*)0x01400000;
         instance->used_mem_size     += channel.total_bytes;
         instance->availale_mem_size -= channel.total_bytes;
         
@@ -257,7 +258,8 @@ int LAYER_add_channel(CNN_Layer *instance, Channel channel){
         else{
             append_channel_node(&(instance->output_channels), channel);
         }
-        instance->output_channels_count++;        
+        instance->output_channels_count++;       
+
     }
 
 

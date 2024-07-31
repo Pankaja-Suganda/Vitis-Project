@@ -1,93 +1,11 @@
 
 
-#include "xaxidma.h"
-#include "xparameters.h"
-#include "sleep.h"
-#include "xil_cache.h"
-#include "xil_io.h"
-#include "xil_util.h"
-#include "xscugic.h"
-#include "test_sample.h"
-#include "xuartps.h"
-
-#include "net_engine.h"
-#include "layer.h"
-#include "conv_layer.h"
-#include <stdio.h>
-#include <strings.h>
 #include <xil_printf.h>
-#include "channels.h"
-#include "net_engine_type.h"
-
-
-#define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
-#define NET_ENGINE_1_CONFIG_BASEADDR  XPAR_NET_ENGINE_0_BASEADDR
-
-// #ifndef DDR_BASE_ADDR
-// #warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
-// DEFAULT SET TO 0x01000000
-// #define MEM_BASE_ADDR		0x01000000
-// #else
-// #define MEM_BASE_ADDR		(DDR_BASE_ADDR + 0x1000000)
-// #endif
-
-// #define DEFAULT_ROW_LEN     100
-// #define DEFAULT_BUFFER_LEN  (DEFAULT_ROW_LEN * DEFAULT_ROW_LEN * 4)
-
-// #define TX_BUFFER_BASE		(MEM_BASE_ADDR + 0x00100000)
-// #define RX_BUFFER_BASE		(MEM_BASE_ADDR + 0x00300000)
-// #define RX_BUFFER_HIGH		(MEM_BASE_ADDR + 0x004FFFFF)
-
-#define ALL_BUFFERS_START   (MEM_BASE_ADDR + 0x00100000)
-#define ALL_BUFFERS_LEN     (DEFAULT_BUFFER_LEN * 4)
-#define ALL_BUFFERS_END     (ALL_BUFFERS_START + ALL_BUFFERS_LEN)
-
-#define INPUT_BUFFER_START  ALL_BUFFERS_START
-#define INPUT_BUFFER_LEN    DEFAULT_ROW_LEN
-#define INPUT_BUFFER_END    (INPUT_BUFFER_START + INPUT_BUFFER_LEN)
-
-#define OUTPUT_BUFFER_START INPUT_BUFFER_END
-#define OUTPUT_BUFFER_LEN   DEFAULT_ROW_LEN
-#define OUTPUT_BUFFER_END   (OUTPUT_BUFFER_START + OUTPUT_BUFFER_LEN)
- 
-#define TEMP_BUFFER_START   OUTPUT_BUFFER_END
-#define TEMP_BUFFER_LEN     DEFAULT_ROW_LEN
-#define TEMP_BUFFER_END     (TEMP_BUFFER_START + TEMP_BUFFER_LEN)
-
-
-
-static __attribute__((aligned(32))) u32 out_buffer[97*97*4] = {0};
-// static u32 out_buffer[97*97*4] = {0};
-// static u32 in_buffer[100*100*4] = {0};
-static __attribute__((aligned(32))) u32 in_buffer[100*100*4] = {0};
-
-typedef u64 XTime;
-XTime time_Global_start;
-XTime time_Global_end;
-
-
-void post_process(Layer layer){
-    float *out_ptr  = (float*)layer.output;
-    float *temp_ptr = (float*)layer.temp;
-    int Index = 0;
-    printf("Post Process\r\n");
-    // for (int Index = 0; Index < 10; Index++) {
-    //     printf("%f, ", (float)out_ptr[Index]);
-    //     temp_ptr[Index] = (out_ptr[Index]>0)? out_ptr[Index]: 0;
-    // }
-    printf("\n");
-}
-
-void pre_process(Layer layer){
-    xil_printf("Pre Process\r\n");
-}
-
-
-
-
-#define INPUT_SIZE  100
-#define OUTPUT_SIZE 98
-
+#include <xil_types.h>
+#include "neural_network.h"
+#include "layer.h"
+#include "test_sample.h"
+#include "conv_layer.h"
 
 #ifndef DDR_BASE_ADDR
 #warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
@@ -97,58 +15,30 @@ DEFAULT SET TO 0x01000000
 #define MEM_BASE_ADDR		(DDR_BASE_ADDR + 0x1000000)
 #endif
 
+#define NN_RECEIVE_MEM_BASE (MEM_BASE_ADDR + 0x00400000)
+#define NN_RECEIVE_MEM_LEN  (0xA000)
+#define NN_RECEIVE_MEM_HIGH (NN_RECEIVE_MEM_BASE + NN_RECEIVE_MEM_LEN)
+
 #define FIRST_CONV_LAYER_MEM_BASE (MEM_BASE_ADDR + 0x00500000)
-#define FIRST_CONV_LAYER_MEM_LEN  (0x20000)
+#define FIRST_CONV_LAYER_MEM_LEN  (0x200000)
 #define FIRST_CONV_LAYER_MEM_HIGH (FIRST_CONV_LAYER_MEM_BASE + FIRST_CONV_LAYER_MEM_LEN)
 
-// int Layer_PReLU(CNN_Layer* instance, float *input, float *output, float *alpha, int height, int width, int channels) {
-//     for (int c = 0; c < channels; c++) {
-//         for (int h = 0; h < height; h++) {
-//             for (int w = 0; w < width; w++) {
-//                 int idx = c * height * width + h * width + w;
-//                 output[idx] = input[idx] > 0 ? input[idx] : alpha[c] * input[idx];
-//             }
-//         }
-//     }
-// }
+#define INPUT_SIZE  100
+#define OUTPUT_SIZE 98
 
-// int Layer_maxpooling(CNN_Layer* instance, float *input, float *output, int input_height, int input_width, int channels, int pool_size, int stride, int padding) {
-//     int output_height = (input_height + 2 * padding - pool_size) / stride + 1;
-//     int output_width = (input_width + 2 * padding - pool_size) / stride + 1;
-    
-//     for (int c = 0; c < channels; c++) {
-//         for (int h = 0; h < output_height; h++) {
-//             for (int w = 0; w < output_width; w++) {
-//                 float max_val = -1.0 / 0.0; // Initialize to negative infinity
-//                 for (int i = 0; i < pool_size; i++) {
-//                     for (int j = 0; j < pool_size; j++) {
-//                         int input_h = h * stride + i - padding;
-//                         int input_w = w * stride + j - padding;
-//                         if (input_h >= 0 && input_h < input_height && input_w >= 0 && input_w < input_width) {
-//                             float val = input[c * input_height * input_width + input_h * input_width + input_w];
-//                             max_val = MAX(max_val, val);
-//                         }
-//                     }
-//                 }
-//                 output[c * output_height * output_width + h * output_width + w] = max_val;
-//             }
-//         }
-//     }
-// }
+static NeuralNetwork NN_model;
 
-int main(){
+static CNN_Layer CNN_Layer_1;
+static CNN_Layer CNN_Layer_2;
+static CNN_Layer CNN_Layer_3;
+
+static Channel   input_R = {0}, input_G = {0}, input_B = {0};
+static Channel   out_chan[10];
+static Channel   out_chan[10];
+
+void LAYER_1_init(CNN_Layer *layer){
     int ret = 0;
-    CNN_Layer conv_layer_1;
-    Channel   input_R, input_G, input_B;
-    Channel   output_1, output_2, output_3, output_4, output_5, output_6, output_7, output_8, output_9, output_10;
-    Channel out_chan[10] = {
-        output_1, output_2, output_3, output_4, output_5, output_6, output_7, output_8, output_9, output_10
-    };
-
-    Channel_Kernal_Data data_1 = {1}, data_2 = {2}, data_3 = {3};
-    Channel_Kernal_Data data_4 = {4}, data_5 = {5}, data_6 = {6};
-    
-    ret = LAYER_CNN_init(&conv_layer_1, (u32*)FIRST_CONV_LAYER_MEM_BASE, FIRST_CONV_LAYER_MEM_LEN);
+    ret = LAYER_CNN_init(layer, (u32*)0, 0);
 
     // creating input channels
     CHANNEL_init(&input_R, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_red);
@@ -156,25 +46,11 @@ int main(){
     CHANNEL_init(&input_B, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_blue);
 
     // adding input channels
-    LAYER_add_channel(&conv_layer_1, input_R);
-    LAYER_add_channel(&conv_layer_1, input_B);
-    LAYER_add_channel(&conv_layer_1, input_G);
+    LAYER_add_channel(&CNN_Layer_1, input_R);
+    LAYER_add_channel(&CNN_Layer_1, input_G);
+    LAYER_add_channel(&CNN_Layer_1, input_B);
 
     // creating output channels
-    // CHANNEL_init(&output_1, CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
-    // CHANNEL_init(&output_2, CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
-    // loading kernals to output channel 1
-    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[0], &input_R);
-    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[1], &input_G);
-    // CHANNEL_load_kernal(&output_1, layer_1_channel_1_weights[2], &input_B);
-    // loading kernals to output channel 2
-    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[3], &input_R);
-    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[4], &input_G);
-    // CHANNEL_load_kernal(&output_2, layer_1_channel_1_weights[5], &input_B);
-    
-    // adding output channels
-    // LAYER_add_channel(&conv_layer_1, output_1);
-    // LAYER_add_channel(&conv_layer_1, output_2);
     for(int i = 0; i < 10; i++){
         CHANNEL_init(&out_chan[i], CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
 
@@ -182,112 +58,62 @@ int main(){
         CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 1], &input_G);
         CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 2], &input_B);
 
-        LAYER_add_channel(&conv_layer_1, out_chan[i]);
+        LAYER_add_channel(&CNN_Layer_1, out_chan[i]);
     }
+}
 
+void LAYER_2_init(CNN_Layer *layer, CNN_Layer input_layer ){
+    // // creating input channels
+    // CHANNEL_init(&input_R, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_red);
+    // CHANNEL_init(&input_G, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_green);
+    // CHANNEL_init(&input_B, CHANNEL_TYPE_INPUT, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_blue);
 
-    LAYER_CNN_set_callbacks(&conv_layer_1, (Layer_Data_Post_Process*)&post_process, (Layer_Data_Pre_Process*)&pre_process);
+    // // adding input channels
+    // LAYER_add_channel(&CNN_Layer_1, input_R);
+    // LAYER_add_channel(&CNN_Layer_1, input_G);
+    // LAYER_add_channel(&CNN_Layer_1, input_B);
 
-    XTime_GetTime(&time_Global_start);
-    xil_printf("Before Time - %d\n", time_Global_start);
-    LAYER_CNN_process(&conv_layer_1);
-    XTime_GetTime(&time_Global_end);
-    xil_printf("After Time - %d - %d\n", time_Global_end, ret);
+    // // creating output channels
+    // for(int i = 0; i < 10; i++){
+    //     CHANNEL_init(&out_chan[i], CHANNEL_TYPE_OUTPUT, OUTPUT_SIZE, OUTPUT_SIZE, NULL);
+
+    //     CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 0], &input_R);
+    //     CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 1], &input_G);
+    //     CHANNEL_load_kernal(&out_chan[i], layer_1_f10_weights[(i*3) + 2], &input_B);
+
+    //     LAYER_add_channel(&CNN_Layer_1, out_chan[i]);
+    // } 
+    
+}
+
+void LAYER_3_init(CNN_Layer *layer){
+    
+}
+
+int main() {
+    int ret = 0;
+    // Task code
+    xil_printf("System Task\r\n");
+
+    LAYER_1_init(&CNN_Layer_1);
+    LAYER_2_init(&CNN_Layer_2, CNN_Layer_1);
+    // LAYER_3_init(&CNN_Layer_3, CNN_Layer_2);
+
+    NEURAL_NETWORK_init(&NN_model, (u32*)FIRST_CONV_LAYER_MEM_BASE, FIRST_CONV_LAYER_MEM_LEN, (u32*)NN_RECEIVE_MEM_BASE);
+    NEURAL_NETWORK_add_layer(&NN_model, CNN_Layer_1);
+    NEURAL_NETWORK_add_layer(&NN_model, CNN_Layer_2);
+    // NEURAL_NETWORK_add_layer(&NN_model, CNN_Layer_3);
+    // TickType_t tickCount = xTaskGetTickCount();
+    NEURAL_NETWORK_process(&NN_model);
+    // printf("\n\n time %d \n", (xTaskGetTickCount() - tickCount) );
+    // vTaskDelay(pdMS_TO_TICKS(100));
+    // NEURAL_NETWORK_get_output(&NN_model);
+
+    while(TRUE){
+        xil_printf("System Task Running\r\n");
+        // vTaskDelay(100);
+    }
 
     return 0;
 }
-// typedef input_channel{
-//     height
-//     width
-//     in_data*
-//     total_bytes
-//     status
-// }
 
-// typedef output_channel{
-//     height
-//     width
-//     out_data*
-//     kernal_data
-//     total_bytes
-//     status
-// }
-
-// typedef struct Layer_{
-//     input_channel *in_channels
-//     input_channels  3
-//     output_channel *out_channels
-//     output_channels 10
-// } Layer;
-
-// // add_input_channel(height, width, data); R
-// // add_input_channel(height, width, data); G
-// // add_input_channel(height, width, data); B
-
-// add_input_channel(height, width, data); 1 channel
-
-// add_output_channel(); 1 channel
-
-// init_layer
-
-// add_input_channels
-// add_input_channels
-// add_input_channels
-
-// add_output_channels // should have kenal // need to manage memory
-// add_output_channels
-
-// }
-
-// int main(){
-//     int ret = 0;
-//     CNN_Layer cnn_layer;
-//     float *out_buffer_p;
-//     float *in_buffer_p;  
-
-//     // out_buffer_p = (u32*) &out_buffer;//RX_BUFFER_BASE;
-//     in_buffer_p  = (float*) &image_data; //TX_BUFFER_BASE;
-//     out_buffer_p = (float*) RX_BUFFER_BASE;
-//     // in_buffer_p  = (float*) TX_BUFFER_BASE;
-
-//     // for(int j = 0; j < 100 ; j++){
-//     //     for(int i = 0; i < 100 ; i++){
-//     //         in_buffer_p[(j*100)+i] = i ;//+ 1.1;
-//     //         // xil_printf("j-%d, i-%d, pos-%d, %08x\r\n", j, i, (j*100)+i, &in_buffer_p[(j*100)+i]);
-//     //     }
-//     // }
-
-//     ret = LAYER_CNN_init(&cnn_layer, in_buffer_p, out_buffer_p);
-
-//     // for(int i = 0 ; i < 9; i++){   
-//     //     ret = LAYER_CNN_load_data(&cnn_layer, cnn_config_data[i]);
-//     // }
-
-//     LAYER_CNN_set_callbacks(&cnn_layer, (Layer_Data_Post_Process*)&post_process, (Layer_Data_Pre_Process*)&pre_process);
-//     // ret = LAYER_CNN_load_data(&cnn_layer, cnn_config_data[1]);
-//     for(int i = 0 ; i < 3; i++){   
-//         ret = LAYER_CNN_load_data(&cnn_layer, cnn_config_data[i]);
-//     }
-    
-//     XTime_GetTime(&time_Global_start);
-//     xil_printf("Before Time - %d\n", time_Global_start);
-//     ret = LAYER_CNN_process(&cnn_layer);
-//     XTime_GetTime(&time_Global_end);
-//     xil_printf("After Time - %d - %d\n", time_Global_end, ret);
-
-//     int row = 0;
-
-// 	// for (int Index = 0; Index < (99); Index++) {
-// 	// 	if(Index%10==0){
-//     //         printf("\n");
-//     //     }
-// 	// 	if(Index%98==0){
-//     //         printf(" (%d)\n", row);
-//     //         row++;
-//     //     }
-// 		// printf("%f, ", out_buffer_p[Index]);
-//         // printf("\t%p, %f, %d - %p, %f, %d \n", &cnn_layer.layer.output[Index], (float)cnn_layer.layer.output[Index], sizeof(cnn_layer.layer.output[Index]), &out_buffer_p[Index], out_buffer_p[Index], sizeof(out_buffer_p[Index]));
-// 	// }
-
-//     return 0;
-// }

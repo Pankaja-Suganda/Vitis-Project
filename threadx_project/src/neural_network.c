@@ -59,7 +59,8 @@ int NEURAL_NETWORK_add_layer(NeuralNetwork *instance, CNN_Layer layer){
 
     while (cur_channel != NULL){
         // calling preprocess function
-        cur_channel->data.output_ptr = instance->memory_tail;
+        // cur_channel->data.output_ptr = instance->memory_tail;
+        cur_channel->data.output_ptr = 0
         cur_channel->data.temp_ptr   = instance->receive_memory_ptr;
         instance->memory_tail       += cur_channel->data.total_bytes;
 
