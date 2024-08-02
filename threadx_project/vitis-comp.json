@@ -13,6 +13,6 @@
   "domainRealName": "RTOS",
   "applicationFlow": "EMBEDDED",
   "previousBuildStatusMap": {
-    "hw": "SUCCESS"
+    "hw": "ERROR"
   }
 }

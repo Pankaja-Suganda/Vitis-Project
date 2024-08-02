@@ -17,14 +17,23 @@ DEFAULT SET TO 0x01000000
 
 
 // add channel size
-int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr){
+Channel* CHANNEL_init(CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr){
+    Channel *instance = NULL;
+    instance = (Channel *)malloc(sizeof(Channel));
+    if (instance == NULL) {
+        printf("Channel malloc failed\n");
+        return NULL;
+    }
+
     instance->type              = type;
     instance->height            = height;
     instance->width             = width;
     instance->total_bytes       = height*width;
     instance->state             = CHANNEL_STATE_NOT_STARTED;
-    instance->kernal_node       = NULL;
     instance->kernal_data_count = 0;
+
+    instance->cnn_data.kernal_node       = NULL;
+
 
     if(type == CHANNEL_TYPE_INPUT){
         instance->input_ptr  = input_ptr;
@@ -36,7 +45,7 @@ int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, u32 height, u32 width, u3
         instance->output_ptr = NULL;
         instance->temp_ptr   = NULL;
     }
-    return 0;
+    return instance;
 }
 
 static Channel_Kernal_Data_Node* create_kernal_node(Channel_Kernal_Data data){
@@ -78,11 +87,11 @@ int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *re
 
         Channel *test = (Channel*)data.reference;
 
-        if(instance->kernal_node == NULL){
-            instance->kernal_node = create_kernal_node(data);
+        if(instance->cnn_data.kernal_node == NULL){
+            instance->cnn_data.kernal_node = create_kernal_node(data);
         }
         else{
-            append_kernal_node(&(instance->kernal_node), data);
+            append_kernal_node(&(instance->cnn_data.kernal_node), data);
         }
         instance->kernal_data_count++;
     }
@@ -91,19 +100,23 @@ int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *re
 static void CHANNEL_post_process(Channel *instance){
     float *temp_ptr = (float*)instance->temp_ptr;
     float *out_ptr  = (float*)instance->output_ptr;
-    int Index = 0;
 
     for (int Index = 0; Index < instance->total_bytes; Index++) {
         out_ptr[Index] = out_ptr[Index] + temp_ptr[Index];
-        if(index < 10)
-            printf("temp %f, out %f \\r\n", temp_ptr[Index], out_ptr[Index]);
+        // if(Index < 10)
+        //     printf("temp %f, out %f \\r\n", temp_ptr[Index], out_ptr[Index]);
     }
 }
 
-static void CHANNEL_pre_process(Channel *instance){
+static void CHANNEL_activation(Channel *instance){
     float *out_ptr  = (float*)instance->output_ptr;
+
     for (int Index = 0; Index < instance->total_bytes; Index++) {
-        out_ptr[Index] = 0.0f;
+        // if(Index < 10)
+        //     printf(" pre  %d out %f * %f \r\n", Index, out_ptr[Index], instance->data.relu_data.alpha);
+        out_ptr[Index] = out_ptr[Index] > 0? out_ptr[Index] : out_ptr[Index] * instance->data.relu_data.alpha;
+        // if(Index < 10)
+        //     printf(" post %d out %f \r\n", Index, out_ptr[Index]);
     }
 }
 
@@ -119,53 +132,38 @@ static void CHANNEL_kernal_to_net_config(Channel_Kernal_Data kernal_data, CNN_Co
     net_config_data->Kernal.Kernal_9 = kernal_data.Kernal.Kernal_9;
     net_config_data->Bias            = kernal_data.Bias;
 
-    // net_config_data->Kernal.Kernal_1 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_2 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_3 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_4 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_5 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_6 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_7 = 0x3F800000; 
-    // net_config_data->Kernal.Kernal_8 = 0x3F800000;
-    // net_config_data->Kernal.Kernal_9 = 0x3F800000;
-    // net_config_data->Bias            = 0x3F800000;
-
     net_config_data->state = CONFIG_DATA_STATE_NOT_STARTED;
 }
 
-void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
-    xil_printf("Channel %d Processing \r\n", instance->index);
+int CHANNEL_CNN_process(Channel *instance, Net_Engine_Inst* net_engine){
+    // xil_printf("Channel %d Processing \r\n", instance->index);
 
-    Channel_Kernal_Data_Node* cur_kernal = instance->kernal_node;
+    Channel_Kernal_Data_Node* cur_kernal = instance->cnn_data.kernal_node;
     Channel *channel = NULL;
     CNN_Config_Data net_config_data;
 
     // check whether the channel loaded
     if(cur_kernal == NULL){
         xil_printf("No output channel available \r\n");
-        return;
+        return 0;
     }
 
     for(int index = 0; index < instance->total_bytes; index++){
         instance->output_ptr[index] = 0.0;
     }
 
+    NET_ENGINE_config_row_length(net_engine, (instance->height + 2));
+
     while (cur_kernal != NULL){
         channel = (Channel*)cur_kernal->data.reference;
 
         CHANNEL_kernal_to_net_config(cur_kernal->data, &net_config_data);
 
-        xil_printf("\tKernal %d Processing %d \r\n", cur_kernal->data.index, channel->index);
-
-        // calling preprocess function -> can add preprocess function here
-        // instance->layer.pre_process(instance->layer);
-        // CHANNEL_pre_process(instance);
+        // xil_printf("\tKernal %d Processing %d, row length %d \r\n", cur_kernal->data.index, channel->index, (instance->height + 2));;
 
         if(channel->input_ptr != NULL){
-            NET_ENGINE_process_cnn(net_engine, (u32*)channel->input_ptr, (u32*)instance->temp_ptr, net_config_data);
+            NET_ENGINE_process_cnn(net_engine, (u32*)channel->input_ptr, (u32*)instance->temp_ptr, net_config_data, instance->height);
         }
-        // CHANNEL_process_channel(&cur_channel->data, &(instance->layer.net_engine));
-
         // calling post process function -> can add postprocess function here
         CHANNEL_post_process(instance);
 
@@ -175,9 +173,7 @@ void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine){
         cur_kernal = cur_kernal->next;
     }
 
-    printf("CHANNEL Post Process Out %p\r\n", instance->output_ptr);
-    for (int Index = 0; Index < 10; Index++) {
-        printf("%f, ", (float)instance->output_ptr[Index]);
+    if(instance->activation != LAYER_ACTIVATION_NOT_REQUIRED){
+        CHANNEL_activation(instance);
     }
-    printf("\n");
 }

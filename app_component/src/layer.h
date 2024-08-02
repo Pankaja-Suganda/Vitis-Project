@@ -15,11 +15,14 @@
 
 typedef enum{
     LAYER_STATE_NOT_STARTED,
-    LAYER_STATE_STATE_BUSY,
-    LAYER_STATE_STATE_COMPLETED,
+    LAYER_STATE_BUSY,
+    LAYER_STATE_COMPLETED,
 } LAYER_STATE;
 
-
+typedef enum{
+    LAYER_TYPE_CNN,
+    LAYER_TYPE_MAXPOOLING,
+} LAYER_TYPE;
 
 
 typedef struct Max_Pooling_Config_Data_{
@@ -33,52 +36,89 @@ typedef struct Layer_ Layer;
 typedef void *(Layer_Data_Post_Process)(Layer layer);
 typedef void *(Layer_Data_Pre_Process)(Layer layer);
 
+
 typedef struct Layer_{
-    u8 index;
-    u32 *input;
-    u32 *output;
-    u32 *temp;
-    Layer_Data_Post_Process *post_process;
-    Layer_Data_Pre_Process  *pre_process;
-    Net_Engine_Inst net_engine;
-    int filter_count;
+    u8          index;
     LAYER_STATE state;
+    LAYER_TYPE  type;
+    LAYER_ACTIVATION activation;
+    struct {
+        u32 *input;
+        u32 *output;
+        u32 *temp;
+    } ptr;
+    struct {
+        Layer_Data_Post_Process *post_process;
+        Layer_Data_Pre_Process  *pre_process;    
+    } func;
+    struct{
+        Channel_Node *channels;
+        u8           count;
+    }input_channels;
+    struct{
+        Channel_Node *channels;
+        u8           count;
+    }output_channels;
+    struct{
+        u32* memory_ptr;
+        u32* memory_tail;
+        u32  used_mem_size;
+        u32  availale_mem_size;
+    } memory;
+    union{
+        struct{
+            CNN_Data_Node * data;
+        } cnn_data;
+        struct{
+            Max_Pooling_Config_Data *data; 
+        } mx_data;
+        struct{
+            float data;
+        } relu_data;
+        struct{
+            u32 data;
+        } softmax_data;
+    } data;
 } Layer;
 
+typedef void *(Layer_init_cb)(Layer *layer, Layer prev_layer);
 
-typedef struct CNN_Layer_{
-    Layer layer;
-    CNN_Data_Node *data;
-    u32 completed_count;
-    u32 total_count;
-    Channel_Node *input_channels;
-    u8           input_channels_count;
-    Channel_Node *output_channels;
-    u8           output_channels_count;
-    u32* memory_ptr;
-    u32  used_mem_size;
-    u32  availale_mem_size;
-} CNN_Layer;
+// typedef struct CNN_Layer_{
+//     Layer layer;
+//     CNN_Data_Node *data;
+// } CNN_Layer;
 
-typedef struct Max_Pooling_Layer_{
-    Layer layer;
-    Max_Pooling_Config_Data data;    
-    u32 completed_count;
-    u32 total_count
-} Max_Pooling_Layer;
+// typedef struct MXPOOLING_Layer_{
+//     Layer layer;
+//     Max_Pooling_Config_Data data; 
+// } MXPOOLING_Layer;
 
-int LAYER_CNN_init(CNN_Layer *instance, u32* memory_ptr, u32 memory_len);
+// typedef struct RELU_Layer_{
+//     Layer layer;
+// } RELU_Layer;
 
-int LAYER_Max_pooling_init(Max_Pooling_Layer *instance, u32* input, u32* output);
+// typedef struct SOFTMAX_Layer_{
+//     Layer layer;
+// } SOFTMAX_Layer;
 
-int LAYER_process(Net_Engine_Inst *instance, u32* input, u32* output);
+Layer* LAYER_init(LAYER_TYPE type, LAYER_ACTIVATION activation, u32* memory_ptr, u32 memory_len);
 
-int LAYER_CNN_load_data(CNN_Layer *instance, CNN_Config_Data data);
+int LAYER_process(Layer *instance, void *optional);
 
-void LAYER_CNN_set_callbacks(CNN_Layer *instance, Layer_Data_Post_Process *post_process, Layer_Data_Pre_Process  *pre_process);
+// int LAYER_CNN_load_data(CNN_Layer *instance, CNN_Config_Data data);
 
-int LAYER_CNN_process(CNN_Layer *instance);
+// void LAYER_CNN_set_callbacks(CNN_Layer *instance, Layer_Data_Post_Process *post_process, Layer_Data_Pre_Process  *pre_process);
 
-int LAYER_add_channel(CNN_Layer *instance, Channel channel);
+// int LAYER_CNN_process(CNN_Layer *instance);
+
+// int LAYER_add_channel(CNN_Layer *instance, Channel channel);
+
+int LAYER_add_input_channel(Layer *instance, u32 height, u32 width, u32 *input_ptr);
+
+int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activation, int channel_count, u32 height, u32 width);
+
+int LAYER_add_maxpool_output_channels(Layer *instance, u32 pool_size, u32 stride, u32 padding, u32 channel_count, u32 height, u32 width);
+
+int LAYER_link(Layer *input_layer, Layer *output_layer);
 
 #endif // NET_ENGINE_LAYER_H

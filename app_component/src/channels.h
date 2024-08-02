@@ -13,14 +13,21 @@
 
 typedef enum{
     CHANNEL_STATE_NOT_STARTED,
-    CHANNEL_STATE_STATE_BUSY,
-    CHANNEL_STATE_STATE_COMPLETED,
+    CHANNEL_STATE_BUSY,
+    CHANNEL_STATE_COMPLETED,
 } CHANNEL_STATE;
 
 typedef enum{
     CHANNEL_TYPE_INPUT,
     CHANNEL_TYPE_OUTPUT,
 } CHANNEL_TYPE;
+
+typedef enum{
+    LAYER_ACTIVATION_RELU,
+    LAYER_ACTIVATION_SOFTMAX,
+    LAYER_ACTIVATION_SIGMOID,
+    LAYER_ACTIVATION_NOT_REQUIRED,
+} LAYER_ACTIVATION;
 
 
 typedef struct Channel_Kernal_Data_{
@@ -58,7 +65,25 @@ typedef struct Channel_{
     u32* temp_ptr;
     CHANNEL_TYPE  type;
     CHANNEL_STATE state;
-    Channel_Kernal_Data_Node *kernal_node;
+    LAYER_ACTIVATION activation;
+    struct{
+        Channel_Kernal_Data_Node *kernal_node;
+    } cnn_data;
+    union{
+        struct{
+            u32 pool_size;   
+            u32 stride;      
+            u32 padding;    
+        } mx_data;
+        struct{
+            float alpha;
+            u32   pad[2];
+        } relu_data;
+        struct{
+            u32   data;
+            u32   pad[2];
+        } softmax_data;
+    } data;
 } Channel;
 
 typedef struct Channel_Node_{
@@ -66,10 +91,14 @@ typedef struct Channel_Node_{
     Channel              data;
 } Channel_Node;
 
-int CHANNEL_init(Channel *instance, CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr);
+Channel* CHANNEL_init(CHANNEL_TYPE type, u32 height, u32 width, u32 *input_ptr);
 
 int CHANNEL_load_kernal(Channel *instance, Channel_Kernal_Data data, Channel *reference);
 
-void CHANNEL_process_channel(Channel *instance, Net_Engine_Inst* net_engine);
+int CHANNEL_CNN_process(Channel *instance, Net_Engine_Inst* net_engine);
+
+int CHANNEL_RELU_process(Channel *instance);
+
+int CHANNEL_MAXPOOLING_process(Channel *instance);
 
 #endif // NET_ENGINE_CHANNEL_H

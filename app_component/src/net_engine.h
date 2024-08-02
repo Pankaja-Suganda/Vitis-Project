@@ -82,9 +82,10 @@ NET_STATUS NET_ENGINE_intr_setup(Net_Engine_Inst *instance, UINTPTR intraddr_p);
 
 NET_STATUS NET_ENGINE_config(Net_Engine_Inst *instance, NET_CONFIG config);
 
-NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *output, CNN_Config_Data data);
+NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *output, CNN_Config_Data data, u32 row_length);
 
 NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_Img *input, Net_Engine_Img *output);
 
+NET_STATUS NET_ENGINE_config_row_length(Net_Engine_Inst *instance, u32 row_length );
 
 #endif // NET_ENGINE_H

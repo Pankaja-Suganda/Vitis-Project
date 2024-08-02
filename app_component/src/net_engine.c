@@ -22,17 +22,20 @@
 #define NET_ENGINE_INPUT_ROW_LENGTH     100
 #define NET_ENGINE_OUTPUT_ROW_LENGTH    98
 
-#define NET_ENGINE_TOTAL_DMA_SEND_LENGTH     (NET_ENGINE_INPUT_ROW_LENGTH  * NET_ENGINE_INPUT_ROW_LENGTH * 4)
-#define NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH  (NET_ENGINE_OUTPUT_ROW_LENGTH * NET_ENGINE_OUTPUT_ROW_LENGTH * 4)
-#define NET_ENGINE_INITIAL_SEND_LENGTH       (NET_ENGINE_INPUT_ROW_LENGTH  * 4 * 3)
-#define NET_ENGINE_SEND_LENGTH               (NET_ENGINE_INPUT_ROW_LENGTH  * 4)
+#define NET_ENGINE_TOTAL_DMA_SEND_LENGTH(x)     ((x+2) * (x+2) * 4)
+#define NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH(x)  (x * x * 4)
+#define NET_ENGINE_INITIAL_SEND_LENGTH(x)       ((x+2) * 4 * 3)
+#define NET_ENGINE_SEND_LENGTH(x)               ((x+2) * 4)
 
+#define DCACHE_FLUSH_INPUT_LENGTH(x)            ((x+2) *(x+2) * 4)
+#define DCACHE_FLUSH_OUTPUT_LENGTH(x)           (x     *   x  * 4)
 
 #define REG_DUMP(reg, value) xil_printf("\tReg %s - %08X \r\n", #reg, value )
 
 
 
 static u32* dma_input_ptr;
+static u32  global_row_length;
 
 /************************** Function Definitions ***************************/
 u32 checkIdle(u32 baseAddress,u32 offset){
@@ -68,8 +71,8 @@ static void row_completed_ISR(void *CallBackRef){
     // xil_printf("\tReg Status -  %04x\n", instance->net_engine_regs->Status_3);
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
     if(img_received){
-        status = XAxiDma_SimpleTransfer(&(instance->dma_inst), dma_input_ptr, NET_ENGINE_INPUT_ROW_LENGTH * 4, XAXIDMA_DMA_TO_DEVICE);
-        dma_input_ptr = dma_input_ptr + (NET_ENGINE_INPUT_ROW_LENGTH);
+        status = XAxiDma_SimpleTransfer(&(instance->dma_inst), dma_input_ptr, NET_ENGINE_SEND_LENGTH(global_row_length), XAXIDMA_DMA_TO_DEVICE);
+        dma_input_ptr = dma_input_ptr + (global_row_length + 2);
 	}
 	XScuGic_Enable(&(instance->intc_inst), instance->config.row_complete_isr_id);
 }
@@ -92,7 +95,7 @@ static void received_ISR(void *CallBackRef){
 	/* Acknowledge pending interrupts */
 	instance->cur_data.state = NET_STATE_COMPLETED;
     img_received = 0;
-    xil_printf("dmaReceiveISR\n");
+    // xil_printf("dmaReceiveISR\n");
 
 
     // XScuGic_Enable(&(instance->intc_inst), instance->config.receive_isr_id);
@@ -368,9 +371,14 @@ void DumpDmaRegisters(XAxiDma *AxiDmaInst) {
     // xil_printf("S2MM Bytes To Transfer Reg: 0x%08x\n", regValue);
 }
 
+NET_STATUS NET_ENGINE_config_row_length(Net_Engine_Inst *instance, u32 row_length ){
+    NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG7_OFFSET, row_length);
+    return NET_ENGINE_OK;
+}
 
 
-static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 *output){
+
+static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 *output, u32 row_length){
     NET_STATUS ret = NET_ENGINE_OK;
 
     instance->cur_data.input  = NULL;
@@ -382,29 +390,34 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 
     instance->cur_data.received_row_count = 0;
     instance->cur_data.send_row_count     = 0;
 
-    dma_input_ptr = input  + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
-
+    global_row_length = row_length;
+    // dma_input_ptr     = input  + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
+    dma_input_ptr     = input  + (global_row_length * 3);
+    
 
     count = 3;
 
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_ENABLE_VALUE);
 
-    Xil_DCacheFlushRange((UINTPTR)input, 100*100*4);
-    Xil_DCacheFlushRange((UINTPTR)output, 97*97*4);
+    Xil_DCacheFlushRange((UINTPTR)input,  DCACHE_FLUSH_INPUT_LENGTH(global_row_length));
+    Xil_DCacheFlushRange((UINTPTR)output, DCACHE_FLUSH_OUTPUT_LENGTH(global_row_length));
 
-    instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
+    // instance->cur_data.input = instance->cur_data.input + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
+    instance->cur_data.input = instance->cur_data.input + (global_row_length * 3);
 
-    printf("output %08x, input %08x \r\n", output, input);
+    // printf("output %08x, input %08x \r\n", output, input);
 
     // NET_ENGINE_dump_regs(instance);
     img_received = 1;
-	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH, XAXIDMA_DEVICE_TO_DMA);
+	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, NET_ENGINE_TOTAL_DMA_RECEIVE_LENGTH(global_row_length), XAXIDMA_DEVICE_TO_DMA);
+    // ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)output, 97*97*4, XAXIDMA_DEVICE_TO_DMA);
 	if(ret != XST_SUCCESS){
 		xil_printf("DMA Receive Transfer failed %d\n", ret);
 		return NET_ENGINE_FAIL;
 	}
 
-	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)input,  NET_ENGINE_INITIAL_SEND_LENGTH, XAXIDMA_DMA_TO_DEVICE);
+	ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)input,  NET_ENGINE_INITIAL_SEND_LENGTH(global_row_length), XAXIDMA_DMA_TO_DEVICE);
+    // ret = XAxiDma_SimpleTransfer(&(instance->dma_inst), (u32)input,  100 * 3 * 4, XAXIDMA_DMA_TO_DEVICE);
 	if(ret != XST_SUCCESS){
 		xil_printf("DMA Transmit Transfer failed %d\n", ret);
 		return NET_ENGINE_FAIL;
@@ -414,7 +427,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 
     
     // while(instance->cur_data.state != NET_STATE_COMPLETED){
     while (img_received){
-        check_dma_status(&(instance->dma_inst));
+        // check_dma_status(&(instance->dma_inst));
         k++;
         // if(k>10){
         //     // XAxiDma_Pause(&(instance->dma_inst));
@@ -426,7 +439,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 
     }
 
     // xil_printf("Completed \r\nOut : \n");
-    Xil_DCacheInvalidateRange((UINTPTR)output, 97 * 97 * 4);
+    Xil_DCacheInvalidateRange((UINTPTR)output, DCACHE_FLUSH_OUTPUT_LENGTH(global_row_length));
 
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_DISABLE_VALUE);
     // NET_ENGINE_dump_regs(instance);
@@ -443,7 +456,7 @@ NET_STATUS NET_ENGINE_process_maxpooling(Net_Engine_Inst *instance, Net_Engine_I
 		return NET_ENGINE_FAIL;
 	}
 
-    ret = NET_ENGINE_process(instance, input, output);
+    // ret = NET_ENGINE_process(instance, input, output);
     if(ret != XST_SUCCESS){
 		xil_printf("Net Engine Process failed\n");
 		return NET_ENGINE_FAIL;
@@ -475,7 +488,7 @@ static NET_STATUS NET_ENGINE_set_cnn_values(Net_Engine_Inst *instance, CNN_Confi
 
 
 
-NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *output, CNN_Config_Data data){
+NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *output, CNN_Config_Data data, u32 row_length){
     NET_STATUS ret = NET_ENGINE_OK;
 
     ret = NET_ENGINE_config(instance, NET_CONFIG_CNN);
@@ -509,7 +522,7 @@ NET_STATUS NET_ENGINE_process_cnn(Net_Engine_Inst *instance, u32 *input, u32 *ou
 
     XAxiDma_IntrEnable(&(instance->dma_inst), XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
 
-    ret = NET_ENGINE_process(instance, input, output);
+    ret = NET_ENGINE_process(instance, input, output, row_length);
     
     if(ret != XST_SUCCESS){
 		xil_printf("Net Engine Process failed\n");
