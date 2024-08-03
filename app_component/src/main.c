@@ -177,7 +177,7 @@ void LAYER_CNN_1_init_cb(Layer *layer, Layer prev_layer){
     LAYER_add_input_channel(layer, INPUT_SIZE, INPUT_SIZE, (u32*)&image_channel_blue);
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_1_f10_weights, (void*)&PRelu_Layer_2_10_weights, 10, (INPUT_SIZE-2), (INPUT_SIZE-2));
+    LAYER_add_cnn_output_channels(&layer, (void*)&layer_1_f10_weights, (void*)&PRelu_Layer_2_10_weights, 10, (INPUT_SIZE-2), (INPUT_SIZE-2));
 }
 
 void LAYER_CNN_2_init_cb(Layer *layer, Layer prev_layer){
@@ -194,7 +194,7 @@ void LAYER_CNN_2_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count    = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_4_f16_weights, (void*)&PRelu_Layer_5_16_weights, 16, CNN_OUTPUT_SIZE_2, CNN_OUTPUT_SIZE_2);
+    LAYER_add_cnn_output_channels(&layer, (void*)&layer_4_f16_weights, (void*)&PRelu_Layer_5_16_weights, 16, CNN_OUTPUT_SIZE_2, CNN_OUTPUT_SIZE_2);
 }
 
 void LAYER_CNN_3_init_cb(Layer *layer, Layer prev_layer){
@@ -211,7 +211,7 @@ void LAYER_CNN_3_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_6_f32_weights, (void*)&PRelu_Layer_7_32_weights, 32, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
+    LAYER_add_cnn_output_channels(&layer, (void*)&layer_6_f32_weights, (void*)&PRelu_Layer_7_32_weights, 32, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
 
 }
 
@@ -229,7 +229,7 @@ void LAYER_CNN_4_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_1x1_output_channels(layer, (void*)&layer_8_f2_weights, (void*)&layer_8_f2_bias, 64, 2, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
+    LAYER_add_cnn_1x1_output_channels(&layer, (void*)&layer_8_f2_weights, (void*)&layer_8_f2_bias, 64, 2, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
 
 }
 
@@ -247,7 +247,7 @@ void LAYER_CNN_5_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_1x1_output_channels(layer, (void*)&layer_9_f4_weights, (void*)&layer_9_f4_bias, 128, 4, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
+    LAYER_add_cnn_1x1_output_channels(&layer, (void*)&layer_9_f4_weights, (void*)&layer_9_f4_bias, 128, 4, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
 
 }
 
@@ -258,7 +258,7 @@ void LAYER_MAXPOOLING_1_init_cb(Layer *layer, Layer prev_layer){
 
     // adding output channels
     LAYER_add_maxpool_output_channels(
-        layer, 
+        &layer, 
         MAX_POOLING_POOL_SIZE_1, 
         MAX_POOLING_STRIDE_1, 
         MAX_POOLING_PADDING_1, 

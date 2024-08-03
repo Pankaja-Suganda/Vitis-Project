@@ -5,6 +5,7 @@
 #include "xscugic.h"
 #include "xparameters.h"
 #include <stdlib.h>
+#include <xil_printf.h>
 
 #define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
 #define NET_ENGINE_1_CONFIG_BASEADDR  XPAR_NET_ENGINE_0_BASEADDR
@@ -96,7 +97,7 @@ int LAYER_add_input_channel(Layer *instance, u32 height, u32 width, u32 *input_p
     return 0;
 }
 
-int LAYER_add_maxpool_output_channels(Layer *instance, u32 pool_size, u32 stride, u32 padding, u32 channel_count, u32 height, u32 width){
+int LAYER_add_maxpool_output_channels(Layer **instance, u32 pool_size, u32 stride, u32 padding, u32 channel_count, u32 height, u32 width){
     Channel *channel;
 
     if (instance == NULL) {
@@ -110,29 +111,29 @@ int LAYER_add_maxpool_output_channels(Layer *instance, u32 pool_size, u32 stride
         }
         channel->total_bytes = height * width;
         channel->input_ptr  = NULL;
-        channel->output_ptr = instance->memory.memory_tail;
-        channel->activation = instance->activation;
+        channel->output_ptr = (*instance)->memory.memory_tail;
+        channel->activation = (*instance)->activation;
         channel->data.mx_data.padding   = padding;
         channel->data.mx_data.pool_size = pool_size;
         channel->data.mx_data.stride    = stride;
 
-        instance->memory.memory_tail       += channel->total_bytes;
-        instance->memory.availale_mem_size -= channel->total_bytes;
-        instance->memory.used_mem_size     += channel->total_bytes;
+        (*instance)->memory.memory_tail       += channel->total_bytes;
+        (*instance)->memory.availale_mem_size -= channel->total_bytes;
+        (*instance)->memory.used_mem_size     += channel->total_bytes;
 
 
-        channel->index = instance->output_channels.count;
-        if(instance->output_channels.channels == NULL){
-            instance->output_channels.channels = create_channel_node(*channel);
+        channel->index = (*instance)->output_channels.count;
+        if((*instance)->output_channels.channels == NULL){
+            (*instance)->output_channels.channels = create_channel_node(*channel);
         }
         else{
-            append_channel_node(&(instance->output_channels.channels), *channel);
+            append_channel_node(&((*instance)->output_channels.channels), *channel);
         }
-        instance->output_channels.count++;
+        (*instance)->output_channels.count++;
     }
 }
 
-int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias, int weights_count, int channel_count, u32 height, u32 width){
+int LAYER_add_cnn_1x1_output_channels(Layer **instance, void *weights, void *bias, int weights_count, int channel_count, u32 height, u32 width){
     Channel *channel;
     Channel_Node *input_channel;
     CNN_1x1_Data *data_ptr;
@@ -142,7 +143,7 @@ int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias
 
     u32 kernal_data_count =  weights_count/channel_count;
 
-    if (instance == NULL || weights_ptr == NULL || bias_ptr == NULL) {
+    if ((*instance) == NULL || weights_ptr == NULL || bias_ptr == NULL) {
         return -1;
     }
 
@@ -154,12 +155,12 @@ int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias
 
         channel->total_bytes = height * width;
         channel->input_ptr  = NULL;
-        channel->output_ptr = instance->memory.memory_tail;
+        channel->output_ptr = (*instance)->memory.memory_tail;
         channel->activation = LAYER_ACTIVATION_NOT_REQUIRED;
 
-        instance->memory.memory_tail       += channel->total_bytes;
-        instance->memory.availale_mem_size -= channel->total_bytes;
-        instance->memory.used_mem_size     += channel->total_bytes;
+        (*instance)->memory.memory_tail       += channel->total_bytes;
+        (*instance)->memory.availale_mem_size -= channel->total_bytes;
+        (*instance)->memory.used_mem_size     += channel->total_bytes;
 
         data_ptr = (CNN_1x1_Data*) malloc(sizeof(CNN_1x1_Data)); 
         if(data_ptr == NULL){
@@ -170,19 +171,21 @@ int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias
         data_ptr->bias         = bias_ptr[chan];
         data_ptr->kernal_count = kernal_data_count;
 
+        // printf("kernal data Channel(%d) B(%f) KC(%d) \n", channel->index, *(float*)&data_ptr->bias, data_ptr->kernal_count);
+
         channel->cnn_1x1_data.data = data_ptr;
-        channel->index = instance->output_channels.count;
-        if(instance->output_channels.channels == NULL){
-            instance->output_channels.channels = create_channel_node(*channel);
+        channel->index = (*instance)->output_channels.count;
+        if((*instance)->output_channels.channels == NULL){
+            (*instance)->output_channels.channels = create_channel_node(*channel);
         }
         else{
-            append_channel_node(&(instance->output_channels.channels), *channel);
+            append_channel_node(&((*instance)->output_channels.channels), *channel);
         }
-        instance->output_channels.count++;
+        (*instance)->output_channels.count++;
     }
 }
 
-int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activation, int channel_count, u32 height, u32 width){
+int LAYER_add_cnn_output_channels(Layer **instance, void* ptr, void* ptr_activation, int channel_count, u32 height, u32 width){
     Channel *channel;
     Channel_Node *input_channel;
     float value = 0.0;
@@ -205,36 +208,36 @@ int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activati
 
         channel->total_bytes = height * width;
         channel->input_ptr  = NULL;
-        channel->output_ptr = instance->memory.memory_tail;
-        channel->activation = instance->activation;
-        if(instance->activation == LAYER_ACTIVATION_RELU){
+        channel->output_ptr = (*instance)->memory.memory_tail;
+        channel->activation = (*instance)->activation;
+        if((*instance)->activation == LAYER_ACTIVATION_RELU){
             channel->data.relu_data.alpha  = value;
         }
 
-        instance->memory.memory_tail       += channel->total_bytes;
-        instance->memory.availale_mem_size -= channel->total_bytes;
-        instance->memory.used_mem_size     += channel->total_bytes;
+        (*instance)->memory.memory_tail       += channel->total_bytes;
+        (*instance)->memory.availale_mem_size -= channel->total_bytes;
+        (*instance)->memory.used_mem_size     += channel->total_bytes;
 
-        input_channel = instance->input_channels.channels;
+        input_channel = (*instance)->input_channels.channels;
         kernal_count  = 0;
 
         while(input_channel != NULL){
-            if(instance->type == LAYER_TYPE_CNN_3X3){
-                CHANNEL_load_kernal(channel, kernal_ptr[(chan * instance->input_channels.count) + kernal_count], &(input_channel->data));
+            if((*instance)->type == LAYER_TYPE_CNN_3X3){
+                CHANNEL_load_kernal(channel, kernal_ptr[(chan * (*instance)->input_channels.count) + kernal_count], &(input_channel->data));
                 kernal_count++;
             }
             
             input_channel = input_channel->next;
         }
 
-        channel->index = instance->output_channels.count;
-        if(instance->output_channels.channels == NULL){
-            instance->output_channels.channels = create_channel_node(*channel);
+        channel->index = (*instance)->output_channels.count;
+        if((*instance)->output_channels.channels == NULL){
+            (*instance)->output_channels.channels = create_channel_node(*channel);
         }
         else{
-            append_channel_node(&(instance->output_channels.channels), *channel);
+            append_channel_node(&((*instance)->output_channels.channels), *channel);
         }
-        instance->output_channels.count++;
+        (*instance)->output_channels.count++;
     }
 }
 
@@ -485,7 +488,49 @@ int LAYER_MAXPOOLING_process(Layer *instance){
 // }
 
 static int LAYER_CNN_1x1_process(Layer *instance){
-    
+    int ret = 0;
+    int input_position;
+    float weight = 0.0f;
+    Channel_Node* output_channel = instance->output_channels.channels;
+    Channel_Node* input_channel;
+    CNN_1x1_Data* data_ptr = NULL;
+
+    // xil_printf("CNN_1x1 process %d\r\n", instance->index);
+
+    while(output_channel != NULL){
+        input_position = 0;
+        data_ptr = output_channel->data.cnn_1x1_data.data;
+        // printf("Output Channel %d B(%f)\r\n", output_channel->data.index, *(float*)&data_ptr->bias);
+        xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
+            output_channel->data.index, 
+            output_channel->data.type, 
+            output_channel->data.height,
+            output_channel->data.width,
+            output_channel->data.output_ptr,
+            output_channel->data.total_bytes
+            );
+
+        input_channel = instance->input_channels.channels;
+        while (input_channel != NULL) {
+            weight = *(float*)&data_ptr->kernal_data[input_position];
+            // printf("\tInput Channel %d - %f  \r\n", input_channel->data.index, weight);
+
+            for (int i = 0; i < output_channel->data.total_bytes; i++) {
+                output_channel->data.output_ptr[i] += input_channel->data.input_ptr[i] * weight;
+            }
+            // printf("1x1 data KC(%d), B(%f), D(%f)\r\n", data_ptr->kernal_count, *(float*)&data_ptr->bias, *(float*)&data_ptr->kernal_data[0]);
+            input_position++;
+            input_channel = (Channel_Node*)input_channel->next;
+        }
+
+        for (int i = 0; i < output_channel->data.total_bytes; i++) {
+            output_channel->data.output_ptr[i] += *(float*)&data_ptr->bias;
+        }
+
+        output_channel = (Channel_Node*)output_channel->next;
+    }
+
+    return ret;
 }
 
 static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
@@ -499,9 +544,17 @@ static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
         return 0;
     }
 
-    printf("Layer process init %d \r\n", instance->index);
+    // printf("Layer process init %d \r\n", instance->index);
 
     while (cur_channel != NULL){
+        xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
+            cur_channel->data.index, 
+            cur_channel->data.type, 
+            cur_channel->data.height,
+            cur_channel->data.width,
+            cur_channel->data.output_ptr,
+            cur_channel->data.total_bytes
+            );
         // calling preprocess function
         if(instance->func.pre_process != NULL){
             instance->func.pre_process(*instance);
@@ -520,7 +573,7 @@ static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
         cur_channel = cur_channel->next;
     }
 
-    xil_printf("CNN Process Completed \r\n");
+    // xil_printf("CNN Process Completed \r\n");
 
     return ret;
 }
@@ -528,6 +581,17 @@ static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
 
 int LAYER_process(Layer *instance, void *optional){
     int ret = 0;
+
+    xil_printf("Layer Process : I(%d) T(%d) H(%d) W(%d) MP(%p) MT(%p) MA(%d), MU(%d) \n", 
+        instance->index, 
+        instance->type, 
+        instance->output_channels.channels->data.height,
+        instance->output_channels.channels->data.width,
+        instance->memory.memory_ptr,
+        instance->memory.memory_tail,
+        instance->memory.availale_mem_size,
+        instance->memory.used_mem_size
+        );
 
     instance->state = LAYER_STATE_BUSY;
 
