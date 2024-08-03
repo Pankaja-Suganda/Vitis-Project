@@ -126,7 +126,7 @@ typedef struct CNN_Data_Node_{
 typedef struct CNN_1x1_Data_{
     u32 *kernal_data;
     u32 kernal_count;
-    u32 bias;
+    float bias;
 }CNN_1x1_Data;
 
 /**************************** Type Definitions *****************************/

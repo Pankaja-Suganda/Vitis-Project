@@ -168,7 +168,7 @@ int LAYER_add_cnn_1x1_output_channels(Layer **instance, void *weights, void *bia
         }
 
         data_ptr->kernal_data  = (u32*)&weights_ptr[kernal_data_count * chan];
-        data_ptr->bias         = bias_ptr[chan];
+        data_ptr->bias         = *(float*)&bias_ptr[chan];
         data_ptr->kernal_count = kernal_data_count;
 
         // printf("kernal data Channel(%d) B(%f) KC(%d) \n", channel->index, *(float*)&data_ptr->bias, data_ptr->kernal_count);
@@ -495,6 +495,10 @@ static int LAYER_CNN_1x1_process(Layer *instance){
     Channel_Node* input_channel;
     CNN_1x1_Data* data_ptr = NULL;
 
+
+    float* output_ptr_f = NULL;
+    float* input_ptr_f  = NULL;
+
     // xil_printf("CNN_1x1 process %d\r\n", instance->index);
 
     while(output_channel != NULL){
@@ -511,20 +515,30 @@ static int LAYER_CNN_1x1_process(Layer *instance){
             );
 
         input_channel = instance->input_channels.channels;
+
+        output_ptr_f = (float*)output_channel->data.output_ptr;
+
+        for (int i = 0; i < output_channel->data.total_bytes; i++) {
+            output_ptr_f[i] = 0.0f;
+        }
+
         while (input_channel != NULL) {
             weight = *(float*)&data_ptr->kernal_data[input_position];
-            // printf("\tInput Channel %d - %f  \r\n", input_channel->data.index, weight);
+
+            input_ptr_f = (float*)input_channel->data.input_ptr;
+            printf("\tInput Channel %d - W(%f) (%f) \n ", input_channel->data.index, weight, data_ptr->bias);
 
             for (int i = 0; i < output_channel->data.total_bytes; i++) {
-                output_channel->data.output_ptr[i] += input_channel->data.input_ptr[i] * weight;
+                output_ptr_f[i] += (input_ptr_f[i] * weight);
             }
-            // printf("1x1 data KC(%d), B(%f), D(%f)\r\n", data_ptr->kernal_count, *(float*)&data_ptr->bias, *(float*)&data_ptr->kernal_data[0]);
+            printf("\t\tPixel- O(%f) I(%f) W(%f)\n ",output_ptr_f[0], input_ptr_f[0], weight);
+            // printf("1x1 data KC(%d), B(%f), D(%f) OD(%f)", data_ptr->kernal_count, data_ptr->bias, *(float*)&data_ptr->kernal_data[0], *(float*)&output_channel->data.output_ptr[0]);
             input_position++;
             input_channel = (Channel_Node*)input_channel->next;
         }
 
         for (int i = 0; i < output_channel->data.total_bytes; i++) {
-            output_channel->data.output_ptr[i] += *(float*)&data_ptr->bias;
+            output_ptr_f[i] += data_ptr->bias;
         }
 
         output_channel = (Channel_Node*)output_channel->next;
@@ -547,14 +561,14 @@ static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
     // printf("Layer process init %d \r\n", instance->index);
 
     while (cur_channel != NULL){
-        xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
-            cur_channel->data.index, 
-            cur_channel->data.type, 
-            cur_channel->data.height,
-            cur_channel->data.width,
-            cur_channel->data.output_ptr,
-            cur_channel->data.total_bytes
-            );
+        // xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
+        //     cur_channel->data.index, 
+        //     cur_channel->data.type, 
+        //     cur_channel->data.height,
+        //     cur_channel->data.width,
+        //     cur_channel->data.output_ptr,
+        //     cur_channel->data.total_bytes
+        //     );
         // calling preprocess function
         if(instance->func.pre_process != NULL){
             instance->func.pre_process(*instance);

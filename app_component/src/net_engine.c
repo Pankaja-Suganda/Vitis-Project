@@ -481,6 +481,19 @@ static NET_STATUS NET_ENGINE_set_cnn_values(Net_Engine_Inst *instance, CNN_Confi
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_KERNAL_REG_9, data.Kernal.Kernal_9);
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_BIAS_REG,     data.Bias);
 
+    // xil_printf("Kernal Data K1(%08x) K2(%08x) K3(%08x) K4(%08x) K5(%08x) K6(%08x) K7(%08x) K8(%08x) K9(%08x) B(%08x)",
+    //     data.Kernal.Kernal_1,
+    //     data.Kernal.Kernal_2,
+    //     data.Kernal.Kernal_3,
+    //     data.Kernal.Kernal_4,
+    //     data.Kernal.Kernal_5,
+    //     data.Kernal.Kernal_6,
+    //     data.Kernal.Kernal_7,
+    //     data.Kernal.Kernal_8,
+    //     data.Kernal.Kernal_9,
+    //     data.Bias
+    // );
+
     // NET_ENGINE_dump_regs(instance);
 
     return NET_ENGINE_OK;
