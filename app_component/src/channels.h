@@ -1,4 +1,3 @@
-
 #ifndef NET_ENGINE_CHANNEL_H
 #define NET_ENGINE_CHANNEL_H
 
@@ -31,7 +30,7 @@ typedef enum{
 
 
 typedef struct Channel_Kernal_Data_{
-    u8 index;
+    u32 index;
     struct {
         u32 Kernal_1;
         u32 Kernal_2;
@@ -69,6 +68,9 @@ typedef struct Channel_{
     struct{
         Channel_Kernal_Data_Node *kernal_node;
     } cnn_data;
+    struct{
+        CNN_1x1_Data * data;
+    } cnn_1x1_data;
     union{
         struct{
             u32 pool_size;   

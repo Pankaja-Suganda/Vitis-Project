@@ -121,13 +121,13 @@ CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/libsrc/build_configs/gen_bsp/CMakeFiles/pkgRedirects
 
 //No help, variable specified on the command line.
-CMAKE_INCLUDE_PATH:UNINITIALIZED=D:\Vivado\Learning\Vitis\Learning_1\msc_project_platform\ps7_cortexa9_0\RTOS\bsp\include
+CMAKE_INCLUDE_PATH:UNINITIALIZED=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/include
 
 //Install path prefix, prepended onto install directories.
 CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/bsp
 
 //No help, variable specified on the command line.
-CMAKE_LIBRARY_PATH:UNINITIALIZED=D:\Vivado\Learning\Vitis\Learning_1\msc_project_platform\ps7_cortexa9_0\RTOS\bsp\lib
+CMAKE_LIBRARY_PATH:UNINITIALIZED=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/lib
 
 //Path to a program.
 CMAKE_LINKER:FILEPATH=D:/Vivado/Software/Vitis/2023.2/gnu/aarch32/nt/gcc-arm-none-eabi/bin/arm-none-eabi-ld.exe
@@ -156,7 +156,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING=
 CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 
 //No help, variable specified on the command line.
-CMAKE_MODULE_PATH:UNINITIALIZED=D:\Vivado\Learning\Vitis\Learning_1\msc_project_platform\ps7_cortexa9_0\RTOS\bsp
+CMAKE_MODULE_PATH:UNINITIALIZED=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp
 
 //Path to a program.
 CMAKE_NM:FILEPATH=D:/Vivado/Software/Vitis/2023.2/gnu/aarch32/nt/gcc-arm-none-eabi/bin/arm-none-eabi-nm.exe
@@ -213,7 +213,7 @@ CMAKE_SKIP_INSTALL_RPATH:BOOL=NO
 CMAKE_SKIP_RPATH:BOOL=NO
 
 //Specs file path for using CMAKE toolchain files
-CMAKE_SPECS_FILE:STRING=D:\Vivado\Learning\Vitis\Learning_1\msc_project_platform\ps7_cortexa9_0\RTOS\bsp\Xilinx.spec
+CMAKE_SPECS_FILE:STRING=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/Xilinx.spec
 
 //Flags used by the linker during the creation of static libraries
 // during all build types.
@@ -239,7 +239,7 @@ CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 CMAKE_STRIP:FILEPATH=D:/Vivado/Software/Vitis/2023.2/gnu/aarch32/nt/gcc-arm-none-eabi/bin/arm-none-eabi-strip.exe
 
 //No help, variable specified on the command line.
-CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=D:\Vivado\Learning\Vitis\Learning_1\msc_project_platform\ps7_cortexa9_0\RTOS\bsp\cortexa9_toolchain.cmake
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/cortexa9_toolchain.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -260,7 +260,7 @@ NON_YOCTO:BOOL=ON
 NUMBER_OF_SLRS:STRING=0x1
 
 //No help, variable specified on the command line.
-SUBDIR_LIST:UNINITIALIZED=ps7_cortexa9_0
+SUBDIR_LIST:UNINITIALIZED=ALL
 
 //ASM FLAGS
 TOOLCHAIN_ASM_FLAGS:STRING= -O2 -DSDT -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard
@@ -564,8 +564,8 @@ proc_compiler:STRING=arm-none-eabi-gcc.exe
 //Compiler Flags
 proc_compiler_flags:STRING= -O2 -DSDT -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard;-c
 
-//No help, variable specified on the command line.
-proc_extra_compiler_flags:UNINITIALIZED= -g -Wall -Wextra -fno-tree-loop-distribute-patterns
+//Extra Compiler Flags
+proc_extra_compiler_flags:STRING= -g -Wall -Wextra -fno-tree-loop-distribute-patterns
 
 //Value Computed by CMake
 qspips_BINARY_DIR:STATIC=D:/Vivado/Learning/Vitis/Learning_1/msc_project_platform/ps7_cortexa9_0/RTOS/bsp/libsrc/build_configs/gen_bsp/libsrc/qspips/src
@@ -784,7 +784,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=1
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=39
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

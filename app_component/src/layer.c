@@ -37,7 +37,7 @@ Layer* LAYER_init(LAYER_TYPE type, LAYER_ACTIVATION activation, u32* memory_ptr,
     instance->activation                = activation;
 
     switch (type) {
-        case LAYER_TYPE_CNN:        instance->data.cnn_data.data     = NULL; break;
+        case LAYER_TYPE_CNN_3X3:    instance->data.cnn_data.data     = NULL; break;
         case LAYER_TYPE_MAXPOOLING: instance->data.mx_data.data      = NULL; break;
     };
 
@@ -132,6 +132,56 @@ int LAYER_add_maxpool_output_channels(Layer *instance, u32 pool_size, u32 stride
     }
 }
 
+int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias, int weights_count, int channel_count, u32 height, u32 width){
+    Channel *channel;
+    Channel_Node *input_channel;
+    CNN_1x1_Data *data_ptr;
+
+    u32 *weights_ptr = (u32*)weights;
+    u32 *bias_ptr    = (u32*)bias;
+
+    u32 kernal_data_count =  weights_count/channel_count;
+
+    if (instance == NULL || weights_ptr == NULL || bias_ptr == NULL) {
+        return -1;
+    }
+
+    for(int chan = 0; chan < channel_count; chan++){
+        channel = CHANNEL_init(CHANNEL_TYPE_OUTPUT, height, width, NULL);
+        if(channel == NULL){
+            return -1;
+        }
+
+        channel->total_bytes = height * width;
+        channel->input_ptr  = NULL;
+        channel->output_ptr = instance->memory.memory_tail;
+        channel->activation = LAYER_ACTIVATION_NOT_REQUIRED;
+
+        instance->memory.memory_tail       += channel->total_bytes;
+        instance->memory.availale_mem_size -= channel->total_bytes;
+        instance->memory.used_mem_size     += channel->total_bytes;
+
+        data_ptr = (CNN_1x1_Data*) malloc(sizeof(CNN_1x1_Data)); 
+        if(data_ptr == NULL){
+            return -1;
+        }
+
+        data_ptr->kernal_data  = (u32*)&weights_ptr[kernal_data_count * chan];
+        data_ptr->bias         = bias_ptr[chan];
+        data_ptr->kernal_count = kernal_data_count;
+
+        channel->cnn_1x1_data.data = data_ptr;
+        channel->index = instance->output_channels.count;
+        if(instance->output_channels.channels == NULL){
+            instance->output_channels.channels = create_channel_node(*channel);
+        }
+        else{
+            append_channel_node(&(instance->output_channels.channels), *channel);
+        }
+        instance->output_channels.count++;
+    }
+}
+
 int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activation, int channel_count, u32 height, u32 width){
     Channel *channel;
     Channel_Node *input_channel;
@@ -169,7 +219,7 @@ int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activati
         kernal_count  = 0;
 
         while(input_channel != NULL){
-            if(instance->type == LAYER_TYPE_CNN){
+            if(instance->type == LAYER_TYPE_CNN_3X3){
                 CHANNEL_load_kernal(channel, kernal_ptr[(chan * instance->input_channels.count) + kernal_count], &(input_channel->data));
                 kernal_count++;
             }
@@ -434,8 +484,11 @@ int LAYER_MAXPOOLING_process(Layer *instance){
 //     return 0;
 // }
 
+static int LAYER_CNN_1x1_process(Layer *instance){
+    
+}
 
-static int LAYER_CNN_process(Layer *instance, Net_Engine_Inst *net_engine){
+static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
     int ret = 0;
 
     Channel_Node* cur_channel = instance->output_channels.channels;
@@ -479,9 +532,11 @@ int LAYER_process(Layer *instance, void *optional){
     instance->state = LAYER_STATE_BUSY;
 
     switch(instance->type){
-        case LAYER_TYPE_CNN:          ret = LAYER_CNN_process(instance, (Net_Engine_Inst*)optional);        break;
-        case LAYER_TYPE_MAXPOOLING:   ret = LAYER_MAXPOOLING_process(instance);                             break;
-            xil_printf("Layer Skipping %d \r\n", instance->index);
+        case LAYER_TYPE_CNN_1X1:          ret = LAYER_CNN_1x1_process(instance);                                break;
+        case LAYER_TYPE_CNN_3X3:          ret = LAYER_CNN_3x3_process(instance, (Net_Engine_Inst*)optional);    break;
+        case LAYER_TYPE_MAXPOOLING:       ret = LAYER_MAXPOOLING_process(instance);                             break;
+        case LAYER_TYPE_CNN_2X2:
+            xil_printf("Not Implement %d \r\n", instance->index);
             break;
     }
 

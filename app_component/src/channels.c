@@ -1,4 +1,6 @@
 #include "channels.h"
+#include <math.h>
+#include <stdio.h>
 
 #ifndef DDR_BASE_ADDR
 #warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
@@ -108,16 +110,47 @@ static void CHANNEL_post_process(Channel *instance){
     }
 }
 
+static float CHANNEL_RELU_activation(float value, float alpha){
+    return value > 0? value : value * alpha;
+}
+
+
+// static float CHANNEL_SOFTMAX_activation(float value, float max_value, float exp_sum) {
+//     return exp((double) value - max_value) / exp_sum;
+// }
+
 static void CHANNEL_activation(Channel *instance){
     float *out_ptr  = (float*)instance->output_ptr;
+    float max_value = -1e10;
+    float exp_sum   = 0.0f;
 
-    for (int Index = 0; Index < instance->total_bytes; Index++) {
-        // if(Index < 10)
-        //     printf(" pre  %d out %f * %f \r\n", Index, out_ptr[Index], instance->data.relu_data.alpha);
-        out_ptr[Index] = out_ptr[Index] > 0? out_ptr[Index] : out_ptr[Index] * instance->data.relu_data.alpha;
-        // if(Index < 10)
-        //     printf(" post %d out %f \r\n", Index, out_ptr[Index]);
+    if(instance->activation == LAYER_ACTIVATION_RELU){
+        for (int Index = 0; Index < instance->total_bytes; Index++) {
+            // if(Index < 10)
+            //     printf(" pre  %d out %f * %f \r\n", Index, out_ptr[Index], instance->data.relu_data.alpha);
+
+            out_ptr[Index] = CHANNEL_RELU_activation(out_ptr[Index], instance->data.relu_data.alpha);
+            // if(Index < 10)
+            //     printf(" post %d out %f \r\n", Index, out_ptr[Index]);
+        }
+    }   
+    else if(instance->activation == LAYER_ACTIVATION_SOFTMAX){
+
+        // for (int Index = 0; Index < instance->total_bytes; Index++) {
+        //     if (out_ptr[Index] > max_value) {
+        //         max_value = out_ptr[Index];
+        //     }
+        // }
+        
+        // for (int Index = 0; Index < instance->total_bytes; Index++) {
+        //     exp_sum += exp((double)(out_ptr[Index] - max_value)); // Compute sum of exponentials
+        // }
+
+        // for (int Index = 0; Index < instance->total_bytes; Index++) {
+        //     out_ptr[Index] = CHANNEL_SOFTMAX_activation(out_ptr[Index], max_value, exp_sum);
+        // }    
     }
+
 }
 
 static void CHANNEL_kernal_to_net_config(Channel_Kernal_Data kernal_data, CNN_Config_Data* net_config_data){

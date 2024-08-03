@@ -123,6 +123,12 @@ typedef struct CNN_Data_Node_{
     CNN_Config_Data        config_data;
 } CNN_Data_Node;
 
+typedef struct CNN_1x1_Data_{
+    u32 *kernal_data;
+    u32 kernal_count;
+    u32 bias;
+}CNN_1x1_Data;
+
 /**************************** Type Definitions *****************************/
 
 #endif // NET_ENGINE_TYPE_H

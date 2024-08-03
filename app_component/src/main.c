@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include <xil_printf.h>
 #include <xil_types.h>
@@ -7,6 +6,7 @@
 #include "layer.h"
 #include "test_sample.h"
 #include "conv_layer.h"
+#include "xscutimer.h"
 
 #ifndef DDR_BASE_ADDR
 #warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
@@ -43,6 +43,8 @@ DEFAULT SET TO 0x01000000
 #define CNN_OUTPUT_SIZE_2 47
 #define CNN_INPUT_SIZE_3  47
 #define CNN_OUTPUT_SIZE_3 45
+#define CNN_OUTPUT_SIZE_4 CNN_OUTPUT_SIZE_3
+#define CNN_OUTPUT_SIZE_5 CNN_OUTPUT_SIZE_3
 
 #define MAX_POOLING_POOL_SIZE_1  2
 #define MAX_POOLING_STRIDE_1     2
@@ -209,7 +211,7 @@ void LAYER_CNN_3_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_4_f16_weights, (void*)&PRelu_Layer_5_16_weights, 16, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
+    LAYER_add_cnn_output_channels(layer, (void*)&layer_6_f32_weights, (void*)&PRelu_Layer_7_32_weights, 32, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
 
 }
 
@@ -227,7 +229,7 @@ void LAYER_CNN_4_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_4_f16_weights, (void*)&PRelu_Layer_5_16_weights, 16, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
+    LAYER_add_cnn_1x1_output_channels(layer, (void*)&layer_8_f2_weights, (void*)&layer_8_f2_bias, 64, 2, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
 
 }
 
@@ -245,12 +247,14 @@ void LAYER_CNN_5_init_cb(Layer *layer, Layer prev_layer){
     layer->input_channels.count = prev_layer.output_channels.count;
 
     // adding output channels
-    LAYER_add_cnn_output_channels(layer, (void*)&layer_4_f16_weights, (void*)&PRelu_Layer_5_16_weights, 16, CNN_OUTPUT_SIZE_3, CNN_OUTPUT_SIZE_3);
+    LAYER_add_cnn_1x1_output_channels(layer, (void*)&layer_9_f4_weights, (void*)&layer_9_f4_bias, 128, 4, CNN_OUTPUT_SIZE_4, CNN_OUTPUT_SIZE_4);
 
 }
 
 void LAYER_MAXPOOLING_1_init_cb(Layer *layer, Layer prev_layer){
     UNUSED(prev_layer);
+
+    LAYER_link(&prev_layer, layer);
 
     // adding output channels
     LAYER_add_maxpool_output_channels(
@@ -270,20 +274,21 @@ int main() {
     Layer *prev_layer_1 = NULL;
     Layer *prev_layer_2 = NULL;
     int ret = 0;
+
     // Task code
     xil_printf("System Task\r\n");
 
     NEURAL_NETWORK_init(&pnet_model, (u32*)NN_RECEIVE_MEM_BASE);
-    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN,        (Layer_init_cb*)LAYER_CNN_1_init_cb,        NULL,       (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_RELU);
-    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_MAXPOOLING, (Layer_init_cb*)LAYER_MAXPOOLING_1_init_cb, prev_layer, (u32*) NN_MEM_POOL_2_BASE, NN_MEM_POOL_2_LEN, LAYER_ACTIVATION_NOT_REQUIRED);
-    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN,        (Layer_init_cb*)LAYER_CNN_2_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_RELU);
-    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN,        (Layer_init_cb*)LAYER_CNN_3_init_cb,        prev_layer, (u32*) NN_MEM_POOL_2_BASE, NN_MEM_POOL_2_LEN, LAYER_ACTIVATION_RELU);
+    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_3X3,        (Layer_init_cb*)LAYER_CNN_1_init_cb,        NULL,       (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_RELU);
+    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_MAXPOOLING,     (Layer_init_cb*)LAYER_MAXPOOLING_1_init_cb, prev_layer, (u32*) NN_MEM_POOL_2_BASE, NN_MEM_POOL_2_LEN, LAYER_ACTIVATION_NOT_REQUIRED);
+    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_3X3,        (Layer_init_cb*)LAYER_CNN_2_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_RELU);
+    prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_3X3,        (Layer_init_cb*)LAYER_CNN_3_init_cb,        prev_layer, (u32*) NN_MEM_POOL_2_BASE, NN_MEM_POOL_2_LEN, LAYER_ACTIVATION_RELU);
     // branch 1
-    prev_layer_1 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN,      (Layer_init_cb*)LAYER_CNN_4_init_cb,        prev_layer, (u32*) NN_MEM_POOL_3_BASE, NN_MEM_POOL_3_LEN, LAYER_ACTIVATION_SOFTMAX);
+    prev_layer_1 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_1X1,      (Layer_init_cb*)LAYER_CNN_4_init_cb,        prev_layer, (u32*) NN_MEM_POOL_3_BASE, NN_MEM_POOL_3_LEN, LAYER_ACTIVATION_SOFTMAX);
     // branch 2
-    prev_layer_2 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN,      (Layer_init_cb*)LAYER_CNN_5_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_NOT_REQUIRED);
+    prev_layer_2 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_1X1,      (Layer_init_cb*)LAYER_CNN_5_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_NOT_REQUIRED);
 
-    NEURAL_NETWORK_layer_link(pnet_model);
+    //NEURAL_NETWORK_layer_link(pnet_model);
 
     // Test_NN_Model(pnet_model);
 

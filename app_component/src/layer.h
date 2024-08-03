@@ -20,7 +20,9 @@ typedef enum{
 } LAYER_STATE;
 
 typedef enum{
-    LAYER_TYPE_CNN,
+    LAYER_TYPE_CNN_1X1,
+    LAYER_TYPE_CNN_2X2,
+    LAYER_TYPE_CNN_3X3,
     LAYER_TYPE_MAXPOOLING,
 } LAYER_TYPE;
 
@@ -116,6 +118,8 @@ int LAYER_process(Layer *instance, void *optional);
 int LAYER_add_input_channel(Layer *instance, u32 height, u32 width, u32 *input_ptr);
 
 int LAYER_add_cnn_output_channels(Layer *instance, void* ptr, void* ptr_activation, int channel_count, u32 height, u32 width);
+
+int LAYER_add_cnn_1x1_output_channels(Layer *instance, void *weights, void *bias, int weights_count, int channel_count, u32 height, u32 width);
 
 int LAYER_add_maxpool_output_channels(Layer *instance, u32 pool_size, u32 stride, u32 padding, u32 channel_count, u32 height, u32 width);
 
