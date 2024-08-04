@@ -7,6 +7,7 @@
 #include "test_sample.h"
 #include "conv_layer.h"
 #include "xscutimer.h"
+#include "utility.h"
 
 #ifndef DDR_BASE_ADDR
 #warning CHECK FOR THE VALID DDR ADDRESS IN XPARAMETERS.H, \
@@ -267,6 +268,98 @@ void LAYER_MAXPOOLING_1_init_cb(Layer *layer, Layer prev_layer){
         MAX_POOLING_OUT_SIZE);
 }
 
+
+#define STRIDE 2
+#define CELLSIZE 12
+
+
+// Function to generate bounding boxes
+void generate_bounding_boxes(float* imap, float* reg, float* scale, float threshold, int height, int width, float* bounding_boxes, int* num_boxes) {
+    int size = height * width;
+    float* dx1 = reg;
+    float* dy1 = reg + size;
+    float* dx2 = reg + 2 * size;
+    float* dy2 = reg + 3 * size;
+    
+    float* temp_boxes = (float*)malloc(size * 6 * sizeof(float));
+    int temp_num_boxes = 0;
+    
+    for (int i = 0; i < size; ++i) {
+        if (imap[i] >= threshold) {
+            int y = i / width;
+            int x = i % width;
+            
+            float score = imap[i];
+            float* reg_offsets = &reg[i * 4];
+            
+            float q1x = (STRIDE * x + 1) / (*scale);
+            float q1y = (STRIDE * y + 1) / (*scale);
+            float q2x = (STRIDE * x + CELLSIZE) / (*scale);
+            float q2y = (STRIDE * y + CELLSIZE) / (*scale);
+            
+            temp_boxes[temp_num_boxes * 6 + 0] = q1x;
+            temp_boxes[temp_num_boxes * 6 + 1] = q1y;
+            temp_boxes[temp_num_boxes * 6 + 2] = q2x;
+            temp_boxes[temp_num_boxes * 6 + 3] = q2y;
+            temp_boxes[temp_num_boxes * 6 + 4] = score;
+            temp_boxes[temp_num_boxes * 6 + 5] = score; 
+            
+            ++temp_num_boxes;
+        }
+    }
+    
+    *num_boxes = temp_num_boxes;
+    memcpy(bounding_boxes, temp_boxes, temp_num_boxes * 6 * sizeof(float));
+    
+    free(temp_boxes);
+}
+
+void scale_image(const unsigned char *input, unsigned char *output, int input_width, int input_height, float scale_factor) {
+    // Calculate output dimensions
+    int output_width = (int)round(input_width * scale_factor);
+    int output_height = (int)round(input_height * scale_factor);
+
+    // Iterate over each pixel in the output image
+    for (int i = 0; i < output_height; i++) {
+        for (int j = 0; j < output_width; j++) {
+            // Compute corresponding position in the input image
+            float x = j / scale_factor;
+            float y = i / scale_factor;
+
+            int x0 = (int)floor(x);
+            int x1 = x0 + 1;
+            int y0 = (int)floor(y);
+            int y1 = y0 + 1;
+
+            if (x1 >= input_width) x1 = x0;
+            if (y1 >= input_height) y1 = y0;
+
+            float wx = x - x0;
+            float wy = y - y0;
+            float w00 = (1 - wx) * (1 - wy);
+            float w01 = (1 - wx) * wy;
+            float w10 = wx * (1 - wy);
+            float w11 = wx * wy;
+
+            unsigned char pixel00 = input[y0 * input_width + x0];
+            unsigned char pixel01 = input[y1 * input_width + x0];
+            unsigned char pixel10 = input[y0 * input_width + x1];
+            unsigned char pixel11 = input[y1 * input_width + x1];
+
+            float pixel_value = w00 * pixel00 +
+                                w01 * pixel01 +
+                                w10 * pixel10 +
+                                w11 * pixel11;
+
+            output[i * output_width + j] = (unsigned char)round(pixel_value);
+        }
+    }
+}
+
+#define CONF_THRESHOLD 0.5
+#define NMS_THRESHOLD 0.5
+#define IMAGE_SIZE 45
+
 int main() {
 
     NeuralNetwork *pnet_model = NULL;
@@ -274,6 +367,11 @@ int main() {
     Layer *prev_layer_1 = NULL;
     Layer *prev_layer_2 = NULL;
     int ret = 0;
+
+    float scale = 1.0f; // Example scale
+    float threshold = 0.5f; // Example threshold
+    static float bounding_boxes[45 * 45 * 6]; // Allocate space for bounding boxes
+    int num_boxes = 0;
 
     // Task code
     xil_printf("System Task\r\n");
@@ -284,7 +382,7 @@ int main() {
     prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_3X3,        (Layer_init_cb*)LAYER_CNN_2_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_RELU);
     prev_layer = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_3X3,        (Layer_init_cb*)LAYER_CNN_3_init_cb,        prev_layer, (u32*) NN_MEM_POOL_2_BASE, NN_MEM_POOL_2_LEN, LAYER_ACTIVATION_RELU);
     // branch 1
-    prev_layer_1 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_1X1,      (Layer_init_cb*)LAYER_CNN_4_init_cb,        prev_layer, (u32*) NN_MEM_POOL_3_BASE, NN_MEM_POOL_3_LEN, LAYER_ACTIVATION_SOFTMAX);
+    prev_layer_1 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_1X1,      (Layer_init_cb*)LAYER_CNN_4_init_cb,        prev_layer, (u32*) NN_MEM_POOL_3_BASE, NN_MEM_POOL_3_LEN, LAYER_ACTIVATION_SOFTMAX); // LAYER_ACTIVATION_SOFTMAX
     // branch 2
     prev_layer_2 = NEURAL_NETWORK_add_layer(pnet_model, LAYER_TYPE_CNN_1X1,      (Layer_init_cb*)LAYER_CNN_5_init_cb,        prev_layer, (u32*) NN_MEM_POOL_1_BASE, NN_MEM_POOL_1_LEN, LAYER_ACTIVATION_NOT_REQUIRED);
 
@@ -293,10 +391,73 @@ int main() {
     // Test_NN_Model(pnet_model);
 
     // TickType_t tickCount = xTaskGetTickCount();
+    // for(int j = 0; j < 3; j++){
     NEURAL_NETWORK_process(pnet_model);
+
+
+
+    static BoundingBox boxes[IMAGE_SIZE * IMAGE_SIZE];
+
+    // Apply thresholding
+    threshold_scores(prev_layer_1, CONF_THRESHOLD, boxes, &num_boxes);
+    printf("threshold_scores bounding box count %d \n", num_boxes);
+    for (int i = 0; i < num_boxes; ++i) {
+        printf("Box %d: score(%f) x(%f) y(%f) w(%f) h(%f)\n", i,
+            boxes[i].score,
+            boxes[i].x,
+            boxes[i].y,
+            boxes[i].w,
+            boxes[i].h);
+    }
+
+    // applying offsets
+    apply_offsets(prev_layer_2, boxes, num_boxes);
+    printf("apply_offsets bounding box count %d \n", num_boxes);
+    for (int i = 0; i < num_boxes; ++i) {
+        printf("Box %d: score(%f) x(%f) y(%f) w(%f) h(%f)\n", i,
+            boxes[i].score,
+            boxes[i].x,
+            boxes[i].y,
+            boxes[i].w,
+            boxes[i].h);
+    }
+
+    // non_max_suppression(boxes, &num_boxes);
+    non_max_suppression(boxes, &num_boxes);
+
+    printf("non_max_suppression bounding box count %d \n", num_boxes);
+    for (int i = 0; i < num_boxes; ++i) {
+        printf("Box %d: score(%f) x(%f) y(%f) w(%f) h(%f)\n", i,
+            boxes[i].score,
+            boxes[i].x,
+            boxes[i].y,
+            boxes[i].w,
+            boxes[i].h);
+    }
+
     // printf("\n\n time %d \n", (xTaskGetTickCount() - tickCount) );
     // vTaskDelay(pdMS_TO_TICKS(100));
     // NEURAL_NETWORK_get_output(&NN_model);
+
+    // float scales[10] = {1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1};
+    // for(int j = 0; j < 10; j++){
+    //     generate_bounding_boxes(
+    //         (float*)prev_layer_1->output_channels.channels->data.output_ptr, 
+    //         (float*)prev_layer_2->output_channels.channels->data.output_ptr, 
+    //         &scales[j], threshold, 45, 45, bounding_boxes, &num_boxes);
+        
+    //     printf("scale %f - Number of bounding boxes: %d\n", scales[j], num_boxes);
+    //     for (int i = 0; i < num_boxes; ++i) {
+    //         printf("Box %d: %f %f %f %f %f %f\n", i,
+    //             bounding_boxes[i * 6 + 0],
+    //             bounding_boxes[i * 6 + 1],
+    //             bounding_boxes[i * 6 + 2],
+    //             bounding_boxes[i * 6 + 3],
+    //             bounding_boxes[i * 6 + 4],
+    //             bounding_boxes[i * 6 + 5]);
+    //     }
+    // }
+
     xil_printf("completed \n");
 
     // Test_NN_Model(pnet_model);

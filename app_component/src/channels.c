@@ -131,7 +131,7 @@ static void CHANNEL_activation(Channel *instance){
 
             out_ptr[Index] = CHANNEL_RELU_activation(out_ptr[Index], instance->data.relu_data.alpha);
             // if(Index < 10)
-            //     printf(" post %d out %f \r\n", Index, out_ptr[Index]);
+            // printf(" post %d out %f \n", Index, out_ptr[Index]);
         }
     }   
     else if(instance->activation == LAYER_ACTIVATION_SOFTMAX){

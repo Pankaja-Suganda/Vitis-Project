@@ -6,6 +6,7 @@
 #include "xparameters.h"
 #include <stdlib.h>
 #include <xil_printf.h>
+#include <math.h>
 
 #define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
 #define NET_ENGINE_1_CONFIG_BASEADDR  XPAR_NET_ENGINE_0_BASEADDR
@@ -487,6 +488,102 @@ int LAYER_MAXPOOLING_process(Layer *instance){
 //     return 0;
 // }
 
+
+// static int LAYER_activate_softmax(Channel *channel){
+//     int size = channel->total_bytes;
+//     float* out_ptr = (float*)channel->output_ptr;
+
+//     float max_val = out_ptr[0];
+//     for (int i = 1; i < size; i++) {
+//         if (out_ptr[i] > max_val) {
+//             max_val = out_ptr[i];
+//         }
+//     }
+//     // printf("max value %f\n", max_val);
+
+//     float sum_exp = 0.0f;
+//     for (int i = 0; i < size; i++) {
+//         out_ptr[i] = expf(out_ptr[i] - max_val);
+//         sum_exp += out_ptr[i];
+//     }
+
+//     // Normalize the softmax values
+//     for (int i = 0; i < size; i++) {
+//         out_ptr[i] /= sum_exp;
+//     }
+//     return 0;
+// }
+
+static int LAYER_activate_softmax(Layer *layer){
+
+    Channel_Node* first_chan  = (Channel_Node*)layer->output_channels.channels;
+    Channel_Node* second_chan = (Channel_Node*)first_chan->next;
+
+    int height = first_chan->data.height;
+    int width  = first_chan->data.width;
+
+    float x1, x2, exp_x1, exp_x2, sum_exp, max_val;
+
+    float *f_data_ptr, *s_data_ptr;
+
+    f_data_ptr = (float*)first_chan->data.output_ptr;
+    s_data_ptr = (float*)second_chan->data.output_ptr;
+
+    // Iterate over each position in the spatial dimensions
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            // Get the input values for the current position
+            x1 = f_data_ptr[(i*height)+j];
+            x2 = s_data_ptr[(i*height)+j];
+
+            // Compute max value for numerical stability
+            max_val = fmaxf(x1, x2);
+
+            // Compute exponentials and sum
+            exp_x1  = expf(x1 - max_val);
+            exp_x2  = expf(x2 - max_val);
+            sum_exp = exp_x1 + exp_x2;
+
+            // Normalize and store back
+            f_data_ptr[(i*height)+j] = exp_x1 / sum_exp;
+            s_data_ptr[(i*height)+j] = exp_x2 / sum_exp;
+        }
+    }
+}
+
+// void softmax(float *channel, int height, int width, int channels) {
+//     int size = height * width * channels;
+
+//     // Iterate over each pixel
+//     for (int h = 0; h < height; ++h) {
+//         for (int w = 0; w < width; ++w) {
+//             // Compute the offset for the current pixel
+//             int offset = (h * width + w) * channels;
+
+//             // Find max value for numerical stability
+//             float max = tensor[offset];
+//             for (int c = 1; c < channels; ++c) {
+//                 if (tensor[offset + c] > max) {
+//                     max = tensor[offset + c];
+//                 }
+//             }
+
+//             // Compute exponentials and sum
+//             float sum = 0.0;
+//             float exps[channels];
+//             for (int c = 0; c < channels; ++c) {
+//                 exps[c] = exp(tensor[offset + c] - max);
+//                 sum += exps[c];
+//             }
+
+//             // Normalize and apply softmax
+//             for (int c = 0; c < channels; ++c) {
+//                 tensor[offset + c] = exps[c] / sum;
+//             }
+//         }
+//     }
+// }
+
 static int LAYER_CNN_1x1_process(Layer *instance){
     int ret = 0;
     int input_position;
@@ -505,14 +602,14 @@ static int LAYER_CNN_1x1_process(Layer *instance){
         input_position = 0;
         data_ptr = output_channel->data.cnn_1x1_data.data;
         // printf("Output Channel %d B(%f)\r\n", output_channel->data.index, *(float*)&data_ptr->bias);
-        xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
-            output_channel->data.index, 
-            output_channel->data.type, 
-            output_channel->data.height,
-            output_channel->data.width,
-            output_channel->data.output_ptr,
-            output_channel->data.total_bytes
-            );
+        // xil_printf("\tChannel Process : I(%d) T(%d) H(%d) W(%d) OP(%p) TB(%d) MA(%d), MU(%d) \n", 
+        //     output_channel->data.index, 
+        //     output_channel->data.type, 
+        //     output_channel->data.height,
+        //     output_channel->data.width,
+        //     output_channel->data.output_ptr,
+        //     output_channel->data.total_bytes
+        //     );
 
         input_channel = instance->input_channels.channels;
 
@@ -526,12 +623,12 @@ static int LAYER_CNN_1x1_process(Layer *instance){
             weight = *(float*)&data_ptr->kernal_data[input_position];
 
             input_ptr_f = (float*)input_channel->data.input_ptr;
-            printf("\tInput Channel %d - W(%f) (%f) \n ", input_channel->data.index, weight, data_ptr->bias);
+            // printf("\tInput Channel %d - W(%f) (%f) \n ", input_channel->data.index, weight, data_ptr->bias);
 
             for (int i = 0; i < output_channel->data.total_bytes; i++) {
                 output_ptr_f[i] += (input_ptr_f[i] * weight);
             }
-            printf("\t\tPixel- O(%f) I(%f) W(%f)\n ",output_ptr_f[0], input_ptr_f[0], weight);
+            // printf("\t\tPixel- O(%f) I(%f) W(%f)\n ",output_ptr_f[0], input_ptr_f[0], weight);
             // printf("1x1 data KC(%d), B(%f), D(%f) OD(%f)", data_ptr->kernal_count, data_ptr->bias, *(float*)&data_ptr->kernal_data[0], *(float*)&output_channel->data.output_ptr[0]);
             input_position++;
             input_channel = (Channel_Node*)input_channel->next;
@@ -541,7 +638,12 @@ static int LAYER_CNN_1x1_process(Layer *instance){
             output_ptr_f[i] += data_ptr->bias;
         }
 
+
         output_channel = (Channel_Node*)output_channel->next;
+    }
+
+    if(instance->activation == LAYER_ACTIVATION_SOFTMAX){
+        LAYER_activate_softmax(instance);
     }
 
     return ret;
@@ -596,16 +698,16 @@ static int LAYER_CNN_3x3_process(Layer *instance, Net_Engine_Inst *net_engine){
 int LAYER_process(Layer *instance, void *optional){
     int ret = 0;
 
-    xil_printf("Layer Process : I(%d) T(%d) H(%d) W(%d) MP(%p) MT(%p) MA(%d), MU(%d) \n", 
-        instance->index, 
-        instance->type, 
-        instance->output_channels.channels->data.height,
-        instance->output_channels.channels->data.width,
-        instance->memory.memory_ptr,
-        instance->memory.memory_tail,
-        instance->memory.availale_mem_size,
-        instance->memory.used_mem_size
-        );
+    // xil_printf("Layer Process : I(%d) T(%d) H(%d) W(%d) MP(%p) MT(%p) MA(%d), MU(%d) \n", 
+    //     instance->index, 
+    //     instance->type, 
+    //     instance->output_channels.channels->data.height,
+    //     instance->output_channels.channels->data.width,
+    //     instance->memory.memory_ptr,
+    //     instance->memory.memory_tail,
+    //     instance->memory.availale_mem_size,
+    //     instance->memory.used_mem_size
+    //     );
 
     instance->state = LAYER_STATE_BUSY;
 

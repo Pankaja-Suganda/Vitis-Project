@@ -55,7 +55,7 @@ static void row_completed_ISR(void *CallBackRef){
 
     u32* temp = dma_input_ptr;
 
-    // xil_printf("%d location \r\n", temp);
+    // xil_printf("%d image pointer %p \r\n", count, temp);
 
     // status = checkIdle(instance->dma_inst.RegBase,0x4);
 	// while(status == 0){
@@ -71,7 +71,7 @@ static void row_completed_ISR(void *CallBackRef){
     // xil_printf("\tReg Status -  %04x\n", instance->net_engine_regs->Status_3);
 	XScuGic_Disable(&(instance->intc_inst), instance->config.row_complete_isr_id);
     if(img_received){
-        status = XAxiDma_SimpleTransfer(&(instance->dma_inst), dma_input_ptr, NET_ENGINE_SEND_LENGTH(global_row_length), XAXIDMA_DMA_TO_DEVICE);
+        status = XAxiDma_SimpleTransfer(&(instance->dma_inst), dma_input_ptr + 6 , NET_ENGINE_SEND_LENGTH(global_row_length), XAXIDMA_DMA_TO_DEVICE);
         dma_input_ptr = dma_input_ptr + (global_row_length + 2);
 	}
 	XScuGic_Enable(&(instance->intc_inst), instance->config.row_complete_isr_id);
@@ -394,7 +394,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 
     // dma_input_ptr     = input  + (NET_ENGINE_INPUT_ROW_LENGTH * 3);
     dma_input_ptr     = input  + (global_row_length * 3);
     
-
+    // xil_printf("%d image pointer %p \r\n", count, input);
     count = 3;
 
     NET_ENGINE_mWriteReg(instance->config.RegBase, NET_ENGINE_S00_AXI_SLV_REG8_OFFSET, NET_ENGINE_ENABLE_VALUE);
@@ -406,6 +406,7 @@ static NET_STATUS NET_ENGINE_process(Net_Engine_Inst *instance, u32 *input, u32 
     instance->cur_data.input = instance->cur_data.input + (global_row_length * 3);
 
     // printf("output %08x, input %08x \r\n", output, input);
+    
 
     // NET_ENGINE_dump_regs(instance);
     img_received = 1;
