@@ -125,4 +125,6 @@ int LAYER_add_maxpool_output_channels(Layer **instance, u32 pool_size, u32 strid
 
 int LAYER_link(Layer *input_layer, Layer *output_layer);
 
+int LAYER_update(Layer *input_layer, Layer *prev_layer, int height, int width);
+
 #endif // NET_ENGINE_LAYER_H

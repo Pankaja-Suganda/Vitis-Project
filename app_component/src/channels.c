@@ -210,3 +210,12 @@ int CHANNEL_CNN_process(Channel *instance, Net_Engine_Inst* net_engine){
         CHANNEL_activation(instance);
     }
 }
+
+
+int CHANNEL_update(Channel *instance, int height, int width){
+    instance->height            = height;
+    instance->width             = width;
+    instance->total_bytes       = height*width;
+
+    return 0;
+}

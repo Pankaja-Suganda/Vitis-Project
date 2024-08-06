@@ -103,4 +103,6 @@ int CHANNEL_RELU_process(Channel *instance);
 
 int CHANNEL_MAXPOOLING_process(Channel *instance);
 
+int CHANNEL_update(Channel *instance, int height, int width);
+
 #endif // NET_ENGINE_CHANNEL_H

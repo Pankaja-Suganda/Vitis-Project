@@ -171,6 +171,28 @@ int NEURAL_NETWORK_process(NeuralNetwork *instance){
     return 0;
 }
 
+int NEURAL_NETWORK_update(NeuralNetwork *instance, int height, int width){
+    int height_, width_;
+    NN_Layer_Node* cur_layer  = instance->layers;
+    NN_Layer_Node* prev_layer = instance->layers;
+
+    // check whether the layer loaded
+    if(cur_layer == NULL){
+        xil_printf("No layer available \r\n");
+        return 0;
+    }
+
+    while (cur_layer != NULL){
+
+        LAYER_update(&(cur_layer->layer), &(prev_layer->layer), height, width);
+
+        // jumping to next laer
+        prev_layer = cur_layer;
+        cur_layer  = cur_layer->next;
+        
+    }
+}
+
 // int NEURAL_NETWORK_predict(NeuralNetwork *instance){
 //     return 0;
 // }

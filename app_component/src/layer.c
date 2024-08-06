@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <xil_printf.h>
 #include <math.h>
+#include "neural_network.h"
 
 #define NET_ENGINE_1_AXI_DMA_BASEADDR XPAR_AXI_DMA_0_BASEADDR
 #define NET_ENGINE_1_CONFIG_BASEADDR  XPAR_NET_ENGINE_0_BASEADDR
@@ -726,3 +727,79 @@ int LAYER_process(Layer *instance, void *optional){
 }
 
     
+int LAYER_update(Layer *input_layer, Layer *prev_layer, int height_, int width_){
+    int ret       = 0;
+    int prev_size = 0;
+
+    int input_height  = 0;
+    int input_width   = 0;
+    int output_height  = 0;
+    int output_width   = 0;
+    int height         = 0;
+    int width          = 0;
+
+    Channel_Node* chan_node;
+
+    if (prev_layer->index == input_layer->index){
+        height = height_;
+        width  = width_;
+    }
+    else{
+        chan_node = prev_layer->output_channels.channels;
+        if(chan_node != NULL){
+            height = chan_node->data.height;
+            width  = chan_node->data.width;
+        }
+        else{
+            height = height_;
+            width  = width_;
+        }
+    }
+
+    switch(input_layer->type){
+        case LAYER_TYPE_CNN_1X1:
+        case LAYER_TYPE_CNN_2X2:
+            input_height  = height;
+            input_width   = width;
+            output_height = height;
+            output_width  = width;
+            break;
+        case LAYER_TYPE_CNN_3X3:
+            input_height  = height;
+            input_width   = width;
+            output_height = height - 2;
+            output_width  = output_height;
+            break;
+        case LAYER_TYPE_MAXPOOLING:
+            input_height  = height;
+            input_width   = width;
+            output_height = (((height-2) + 2)/2);
+            output_width  = output_height;
+            break;
+    }
+    
+    // printf("input_height(%d), input_width(%d), output_height(%d), output_width(%d) \n", input_height, input_width, output_height, output_width);
+
+    Channel_Node* input_channel  = input_layer->input_channels.channels;
+    Channel_Node* output_channel = input_layer->output_channels.channels;
+
+    // check whether the channel loaded
+    if(input_channel == NULL || output_channel == NULL){
+        xil_printf("No output channel available \r\n");
+        return 0;
+    }
+
+    while (input_channel != NULL){
+        CHANNEL_update((&input_channel->data), input_height, input_width);
+        
+        input_channel  = input_channel->next;
+    }  
+
+    while (output_channel != NULL){
+
+        CHANNEL_update(&output_channel->data, output_height, output_width);
+
+        // jumping to next channel
+        output_channel = output_channel->next;
+    }  
+}
